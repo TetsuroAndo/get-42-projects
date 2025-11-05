@@ -81,8 +81,10 @@ python main.py
 ## プロジェクト構造
 
 - `src/auth/`: 42認証モジュール
-  - `auth.py`: 認証とトークン管理
-- `src/fortytwo/`: 42 API操作モジュール
+  - `client.py`: 認証クライアント
+  - `token.py`: トークン管理
+  - `exceptions.py`: 例外クラス
+- `src/api/`: 42 API操作モジュール
   - `projects.py`: プロジェクト取得
 - `src/anytype/`: Anytype API操作モジュール
   - `client.py`: APIクライアント
@@ -119,7 +121,7 @@ python main.py
 
 ```python
 from src.auth import Auth42
-from src.fortytwo import Project42
+from src.api import Project42
 from src.anytype import AnytypeClient, TableManager, TableRow
 
 # 認証

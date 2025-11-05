@@ -6,10 +6,9 @@ import sys
 from typing import List
 
 from src.config import Config
-from src.auth import Auth42, TokenManager, TokenError, Auth42Error
-from src.fortytwo import Project42, Project, Project42Error
-from src.anytype import AnytypeClient, TableManager, TableRow
-
+from auth42 import Auth42, TokenManager, TokenError, Auth42Error
+from src import Project42, Project, Project42Error
+from anytype import AnytypeClient, TableManager, TableRow
 
 def project_to_table_row(project: Project) -> TableRow:
     """ProjectオブジェクトをTableRowに変換

@@ -8,7 +8,7 @@ from datetime import datetime
 import json
 import requests
 
-from ..auth import Auth42
+from auth42 import Auth42
 
 
 class Project42Error(Exception):

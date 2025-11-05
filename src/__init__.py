@@ -1,17 +1,7 @@
-"""get-42-projects パッケージ
+"""プロジェクト取得モジュール
 
-42からプロジェクト情報を取得し、Anytypeにインポートするためのパッケージです。
+42のAPIからプロジェクト情報を取得するモジュールです。
 """
-from .auth import Auth42, TokenManager
-from .fortytwo import Project42, Project
-from .anytype import AnytypeClient, TableManager, TableRow
+from .projects import Project42, Project, Project42Error
 
-__all__ = [
-    "Auth42",
-    "TokenManager",
-    "Project42",
-    "Project",
-    "AnytypeClient",
-    "TableManager",
-    "TableRow",
-]
+__all__ = ["Project42", "Project", "Project42Error"]

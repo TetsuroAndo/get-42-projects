@@ -1,3 +1,6 @@
-[submodule "src/auth"]
-	path = src/auth
+[submodule "auth42"]
+	path = auth42
 	url = git@github.com:TetsuroAndo/auth-42-api.git
+[submodule "anytype"]
+	path = anytype
+	url = git@github.com:TetsuroAndo/anytype-collections-api.git
