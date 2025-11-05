@@ -24,6 +24,9 @@ class Config:
 
     # その他設定
     token_file: Optional[Path] = None
+    log_file: str = "get_42_projects.log"
+    batch_size: int = 50
+    detail_fetch_interval: int = 10  # 詳細情報取得の進捗表示間隔
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -56,6 +59,9 @@ class Config:
             anytype_api_key=os.getenv("ANYTYPE_API_KEY", ""),
             anytype_table_id=os.getenv("ANYTYPE_TABLE_ID", ""),
             token_file=_get_path_env("TOKEN_FILE"),
+            log_file=os.getenv("LOG_FILE", "get_42_projects.log"),
+            batch_size=_get_int_env("BATCH_SIZE", default=50),
+            detail_fetch_interval=_get_int_env("DETAIL_FETCH_INTERVAL", default=10),
         )
 
     def validate(self) -> None:
