@@ -1,0 +1,13 @@
+[project]
+name = "get-42-projects"
+version = "0.1.0"
+description = "42からプロジェクト情報を取得し、Anytypeにインポートするツール"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "requests>=2.31.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
