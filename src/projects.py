@@ -2,7 +2,7 @@
 
 42のAPIからプロジェクト情報を取得します。
 """
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from dataclasses import dataclass, field
 from datetime import datetime
 import json
@@ -103,6 +103,12 @@ class ProjectSession:
     begin_at: Optional[str] = None
     end_at: Optional[str] = None
     rules: List[Dict[str, Any]] = field(default_factory=list)  # ルール情報
+    status: Optional[str] = None  # 進行ステータス
+    forbidden_rules: List[str] = field(default_factory=list)  # 禁止条件
+    recommended_rules: List[str] = field(default_factory=list)  # 推奨条件
+    team_total_count: Optional[int] = None  # チーム総数
+    team_success_count: Optional[int] = None  # 成功チーム数
+    team_success_rate: Optional[float] = None  # 成功率（0.0-1.0）
 
     @classmethod
     def from_api_response(cls, data: Dict[str, Any]) -> "ProjectSession":
@@ -131,6 +137,12 @@ class ProjectSession:
             begin_at=data.get("begin_at"),
             end_at=data.get("end_at"),
             rules=[],  # 後で取得
+            status=data.get("status"),  # 進行ステータス
+            forbidden_rules=[],  # 後で取得
+            recommended_rules=[],  # 後で取得
+            team_total_count=None,  # 後で取得
+            team_success_count=None,  # 後で取得
+            team_success_rate=None,  # 後で取得
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -156,6 +168,12 @@ class ProjectSession:
             "begin_at": self.begin_at,
             "end_at": self.end_at,
             "rules": self.rules,
+            "status": self.status,
+            "forbidden_rules": self.forbidden_rules,
+            "recommended_rules": self.recommended_rules,
+            "team_total_count": self.team_total_count,
+            "team_success_count": self.team_success_count,
+            "team_success_rate": self.team_success_rate,
         }
 
 
@@ -600,8 +618,96 @@ class Project42:
             # エラー時は空リストを返す（ログに記録はしない）
             return []
 
+    def get_project_session_teams(self, project_session_id: int) -> Dict[str, Any]:
+        """プロジェクトセッションのチーム統計情報を取得
+
+        ガイドに基づいて、チームの成績（Success した割合など）を取得します。
+
+        Args:
+            project_session_id: プロジェクトセッションID
+
+        Returns:
+            チーム統計情報の辞書（total_count, success_count, success_rate）
+        """
+        url = f"{self.BASE_URL}/v2/project_sessions/{project_session_id}/teams"
+        headers = self.auth.get_headers()
+
+        try:
+            # 完了したチームのみを取得（with_mark=true）
+            params = {"filter[with_mark]": "true"}
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            teams_data = response.json()
+
+            total_count = len(teams_data)
+            success_count = 0
+
+            # 成功したチームをカウント
+            # validated?がtrue、またはfinal_markが一定以上（例：125以上）の場合を成功とする
+            for team in teams_data:
+                if team.get("validated") is True:
+                    success_count += 1
+                elif team.get("final_mark") is not None:
+                    # final_markが125以上の場合も成功とみなす（42の一般的な合格基準）
+                    if team.get("final_mark", 0) >= 125:
+                        success_count += 1
+
+            success_rate = success_count / total_count if total_count > 0 else 0.0
+
+            return {
+                "total_count": total_count,
+                "success_count": success_count,
+                "success_rate": success_rate,
+            }
+        except requests.exceptions.RequestException:
+            # エラー時はデフォルト値を返す
+            return {
+                "total_count": 0,
+                "success_count": 0,
+                "success_rate": 0.0,
+            }
+
+    def categorize_rules(self, rules: List[Dict[str, Any]]) -> Tuple[List[str], List[str]]:
+        """ルールをForbidden（禁止）とRecommended（推奨）に分類
+
+        Args:
+            rules: ルール情報のリスト
+
+        Returns:
+            (forbidden_rules, recommended_rules) のタプル
+        """
+        forbidden_rules = []
+        recommended_rules = []
+
+        for rule in rules:
+            if not isinstance(rule, dict):
+                continue
+
+            rule_name = rule.get("name", "")
+            rule_description = rule.get("description", "")
+            rule_kind = rule.get("kind", "")
+            rule_text = rule_name or rule_description
+
+            if not rule_text:
+                continue
+
+            # ルール名や説明に「forbidden」「禁止」「not allowed」などのキーワードが含まれる場合
+            rule_text_lower = rule_text.lower()
+            if any(keyword in rule_text_lower for keyword in ["forbidden", "禁止", "not allowed", "not permitted"]):
+                forbidden_rules.append(rule_text)
+            # ルール名や説明に「recommended」「推奨」「suggested」などのキーワードが含まれる場合
+            elif any(keyword in rule_text_lower for keyword in ["recommended", "推奨", "suggested", "should"]):
+                recommended_rules.append(rule_text)
+            # kindがinscription（登録条件）でrequiredがFalseの場合は推奨とみなす
+            elif rule_kind == "inscription" and rule.get("required") is False:
+                recommended_rules.append(rule_text)
+            # kindがinscriptionでrequiredがTrueの場合は必須条件（禁止ではないが、必須として扱う）
+            # その他のルールは説明に基づいて判定
+
+        return forbidden_rules, recommended_rules
+
     def get_project_session_with_details(self, session: ProjectSession) -> ProjectSession:
-        """プロジェクトセッションの詳細情報（スキル、添付ファイル、ルール）を取得して更新
+        """プロジェクトセッションの詳細情報（スキル、添付ファイル、ルール、チーム統計）を取得して更新
 
         Args:
             session: プロジェクトセッションオブジェクト
@@ -617,6 +723,11 @@ class Project42:
 
         # ルール情報を取得
         session.rules = self.get_project_session_rules(session.id)
+
+        # ルールをForbidden/Recommendedに分類
+        forbidden_rules, recommended_rules = self.categorize_rules(session.rules)
+        session.forbidden_rules = forbidden_rules
+        session.recommended_rules = recommended_rules
 
         # 評価の回数（correction_number）を取得
         # 評価（evaluations）エンドポイントから取得を試みる
@@ -642,5 +753,11 @@ class Project42:
                                 pass
         except requests.exceptions.RequestException:
             pass
+
+        # チーム統計情報を取得
+        team_stats = self.get_project_session_teams(session.id)
+        session.team_total_count = team_stats.get("total_count")
+        session.team_success_count = team_stats.get("success_count")
+        session.team_success_rate = team_stats.get("success_rate")
 
         return session

@@ -20,7 +20,8 @@ class Config:
     # Anytype API設定
     anytype_api_url: str = "http://localhost:3030"
     anytype_api_key: str = ""
-    anytype_table_id: str = ""
+    anytype_space_id: str = ""
+    anytype_objects_id: Optional[str] = None  # オプション（特定のオブジェクトIDを指定する場合）
 
     # その他設定
     token_file: Optional[Path] = None
@@ -32,23 +33,12 @@ class Config:
     def from_env(cls) -> "Config":
         """環境変数から設定を読み込む
 
-        複数の環境変数名をサポート:
-        - FORTYTWO_CLIENT_ID / UID / CLIENT_ID
-        - FORTYTWO_CLIENT_SECRET / SECRET / CLIENT_SECRET
+        環境変数名:
+        - FT_UID: 42 APIのクライアントID
+        - FT_SECRET: 42 APIのクライアントシークレット
         """
-        # 複数の環境変数名をサポート
-        client_id = (
-            os.getenv("FORTYTWO_CLIENT_ID")
-            or os.getenv("UID")
-            or os.getenv("CLIENT_ID")
-            or ""
-        )
-        client_secret = (
-            os.getenv("FORTYTWO_CLIENT_SECRET")
-            or os.getenv("SECRET")
-            or os.getenv("CLIENT_SECRET")
-            or ""
-        )
+        client_id = os.getenv("FT_UID", "")
+        client_secret = os.getenv("FT_SECRET", "")
 
         return cls(
             fortytwo_client_id=client_id,
@@ -57,7 +47,8 @@ class Config:
             fortytwo_cursus_id=_get_int_env("FORTYTWO_CURSUS_ID", default=21),
             anytype_api_url=os.getenv("ANYTYPE_API_URL", "http://localhost:3030"),
             anytype_api_key=os.getenv("ANYTYPE_API_KEY", ""),
-            anytype_table_id=os.getenv("ANYTYPE_TABLE_ID", ""),
+            anytype_space_id=os.getenv("ANYTYPE_SPACE_ID", ""),
+            anytype_objects_id=os.getenv("ANYTYPE_OBJECTS_ID"),
             token_file=_get_path_env("TOKEN_FILE"),
             log_file=os.getenv("LOG_FILE", "get_42_projects.log"),
             batch_size=_get_int_env("BATCH_SIZE", default=50),
@@ -69,13 +60,13 @@ class Config:
         errors = []
 
         if not self.fortytwo_client_id:
-            errors.append("FORTYTWO_CLIENT_ID が設定されていません")
+            errors.append("FT_UID が設定されていません")
         if not self.fortytwo_client_secret:
-            errors.append("FORTYTWO_CLIENT_SECRET が設定されていません")
+            errors.append("FT_SECRET が設定されていません")
         if not self.anytype_api_key:
             errors.append("ANYTYPE_API_KEY が設定されていません")
-        if not self.anytype_table_id:
-            errors.append("ANYTYPE_TABLE_ID が設定されていません")
+        if not self.anytype_space_id:
+            errors.append("ANYTYPE_SPACE_ID が設定されていません")
 
         if errors:
             raise ValueError("\n".join(errors))

@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from auth42 import Auth42
 from src.config import Config
 from src.projects import Project42, ProjectSession, Project42Error
-from src.converters import project_session_to_table_row
-from anytype import AnytypeClient, TableManager, TableRow
+from src.converters import project_session_to_object
+from anytype import AnytypeClient, ObjectManager, AnytypeObject
 
 
 @dataclass
@@ -62,10 +62,10 @@ class ProjectSessionSyncer:
             api_key=config.anytype_api_key,
         )
 
-        # テーブルマネージャーを初期化
-        self.table_manager = TableManager(
+        # オブジェクトマネージャーを初期化
+        self.object_manager = ObjectManager(
             client=self.anytype_client,
-            table_id=config.anytype_table_id,
+            space_id=config.anytype_space_id,
         )
 
     def fetch_sessions(
@@ -116,7 +116,10 @@ class ProjectSessionSyncer:
 
                 # 進捗表示
                 if idx % self.config.detail_fetch_interval == 0:
-                    self.logger.info(f"  詳細情報取得進捗: {idx}/{len(sessions)}")
+                    self.logger.info(
+                        f"  詳細情報取得進捗: {idx}/{len(sessions)} "
+                        f"(プロジェクト: {session.project_name})"
+                    )
             except Exception as e:
                 self.logger.warning(
                     f"セッションID {session.id} ({session.project_name}) の詳細情報取得に失敗: {e}"
@@ -129,44 +132,50 @@ class ProjectSessionSyncer:
         )
         return sessions_with_details
 
-    def convert_to_rows(self, sessions: List[ProjectSession]) -> List[TableRow]:
-        """プロジェクトセッションをテーブル行に変換
+    def convert_to_objects(self, sessions: List[ProjectSession]) -> List[AnytypeObject]:
+        """プロジェクトセッションをオブジェクトに変換
 
         Args:
             sessions: プロジェクトセッションのリスト
 
         Returns:
-            テーブル行のリスト
+            オブジェクトのリスト
         """
-        self.logger.info("プロジェクトセッションをテーブル形式に変換中...")
-        rows = [project_session_to_table_row(session) for session in sessions]
-        self.logger.info(f"{len(rows)}件のテーブル行を生成しました")
-        return rows
+        self.logger.info("プロジェクトセッションをオブジェクト形式に変換中...")
+        objects = [project_session_to_object(session) for session in sessions]
+        self.logger.info(f"{len(objects)}件のオブジェクトを生成しました")
+        return objects
 
-    def save_to_anytype(self, rows: List[TableRow]) -> Tuple[int, int]:
-        """Anytypeテーブルに保存
+    def save_to_anytype(self, objects: List[AnytypeObject]) -> Tuple[int, int]:
+        """Anytypeにオブジェクトを保存
 
         Args:
-            rows: テーブル行のリスト
+            objects: オブジェクトのリスト
 
         Returns:
             (成功数, エラー数) のタプル
         """
-        self.logger.info("Anytypeテーブルに追加中...")
+        self.logger.info("Anytypeにオブジェクトを追加中...")
         batch_size = self.config.batch_size
         success_count = 0
         error_count = 0
 
-        for i in range(0, len(rows), batch_size):
-            batch = rows[i:i + batch_size]
+        for i in range(0, len(objects), batch_size):
+            batch = objects[i:i + batch_size]
             try:
-                self.table_manager.create_rows(batch)
-                success_count += len(batch)
-                self.logger.info(f"  {success_count}/{len(rows)} 件を追加しました")
+                results = self.object_manager.create_objects(batch)
+                # エラーがないかチェック
+                batch_success = sum(1 for r in results if "error" not in r)
+                batch_errors = len(batch) - batch_success
+                success_count += batch_success
+                error_count += batch_errors
+                self.logger.info(f"  {success_count}/{len(objects)} 件を追加しました")
+                if batch_errors > 0:
+                    self.logger.warning(f"  {batch_errors}件のオブジェクトでエラーが発生しました")
             except Exception as e:
                 error_count += len(batch)
                 self.logger.error(
-                    f"  バッチ追加エラー ({i+1}-{min(i+batch_size, len(rows))}件): {e}"
+                    f"  バッチ追加エラー ({i+1}-{min(i+batch_size, len(objects))}件): {e}"
                 )
                 # 個別に追加を試みる
                 success, errors = self._save_individually(batch, i)
@@ -177,13 +186,13 @@ class ProjectSessionSyncer:
 
     def _save_individually(
         self,
-        batch: List[TableRow],
+        batch: List[AnytypeObject],
         start_index: int,
     ) -> Tuple[int, int]:
-        """バッチ内の行を個別に保存
+        """バッチ内のオブジェクトを個別に保存
 
         Args:
-            batch: 保存する行のリスト
+            batch: 保存するオブジェクトのリスト
             start_index: 開始インデックス（ログ表示用）
 
         Returns:
@@ -192,14 +201,14 @@ class ProjectSessionSyncer:
         success_count = 0
         error_count = 0
 
-        for row_idx, row in enumerate(batch):
+        for obj_idx, obj in enumerate(batch):
             try:
-                self.table_manager.create_row(row)
+                self.object_manager.create_object(obj)
                 success_count += 1
-                self.logger.info(f"  個別追加成功: {start_index + row_idx + 1}")
+                self.logger.info(f"  個別追加成功: {start_index + obj_idx + 1} ({obj.name})")
             except Exception as e:
                 error_count += 1
-                self.logger.error(f"  個別追加エラー (行 {start_index + row_idx + 1}): {e}")
+                self.logger.error(f"  個別追加エラー (オブジェクト {start_index + obj_idx + 1}, {obj.name}): {e}")
 
         return success_count, error_count
 
@@ -234,11 +243,11 @@ class ProjectSessionSyncer:
             # 詳細情報を取得
             sessions_with_details = self.fetch_details(sessions)
 
-            # テーブル行に変換
-            rows = self.convert_to_rows(sessions_with_details)
+            # オブジェクトに変換
+            objects = self.convert_to_objects(sessions_with_details)
 
             # Anytypeに保存
-            success_count, error_count = self.save_to_anytype(rows)
+            success_count, error_count = self.save_to_anytype(objects)
             result.success_count = success_count
             result.error_count = error_count
 

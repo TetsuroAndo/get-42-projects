@@ -47,16 +47,16 @@ load_dotenv()
 export $(cat .env | xargs)
 
 # または手動で設定
-export UID=your_client_id
-export SECRET=your_client_secret
+export FT_UID=your_client_id
+export FT_SECRET=your_client_secret
 # ... など
 ```
 
 **設定する環境変数:**
 
-**42 API認証情報（いずれか1組）:**
-- `FORTYTWO_CLIENT_ID` / `UID` / `CLIENT_ID`: 42 APIのクライアントID
-- `FORTYTWO_CLIENT_SECRET` / `SECRET` / `CLIENT_SECRET`: 42 APIのクライアントシークレット
+**42 API認証情報:**
+- `FT_UID` : 42 APIのクライアントID
+- `FT_SECRET`: 42 APIのクライアントシークレット
 
 **Anytype API設定:**
 - `ANYTYPE_API_URL`: Anytype APIのURL（デフォルト: http://localhost:3030）
@@ -88,8 +88,8 @@ python main.py
 
 ```bash
 # 環境変数から認証情報を読み込む
-export FORTYTWO_CLIENT_ID=your_client_id
-export FORTYTWO_CLIENT_SECRET=your_client_secret
+export FT_UID=your_client_id
+export FT_SECRET=your_client_secret
 python -m auth42.main
 
 # コマンドライン引数で認証情報を指定

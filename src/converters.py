@@ -1,9 +1,9 @@
 """データ変換モジュール
 
-42のAPIデータをAnytypeテーブル形式に変換する処理を担当します。
+42のAPIデータをAnytypeオブジェクト形式に変換する処理を担当します。
 """
 from typing import Dict, Any, List, Optional
-from anytype import TableRow
+from anytype import AnytypeObject
 from src.projects import ProjectSession
 
 
@@ -69,40 +69,182 @@ def format_rules(rules: List[Dict[str, Any]]) -> List[str]:
     return rule_descriptions
 
 
-def project_session_to_table_row(session: ProjectSession) -> TableRow:
-    """ProjectSessionオブジェクトをTableRowに変換
+def project_session_to_object(session: ProjectSession) -> AnytypeObject:
+    """ProjectSessionオブジェクトをAnytypeObjectに変換
 
     Args:
         session: 42のプロジェクトセッションオブジェクト
 
     Returns:
-        Anytypeテーブル用の行データ
+        Anytypeオブジェクト
     """
     skill_names = extract_skill_names(session.skills)
     attachment_urls = extract_attachment_urls(session.attachments)
     rule_descriptions = format_rules(session.rules)
 
-    fields = {
-        "id": session.id,
-        "project_id": session.project_id,
-        "project_name": session.project_name,
-        "project_slug": session.project_slug,
-        "description": session.description or "",
-        "xp": session.xp,
-        "creation_date": session.creation_date or "",
-        "cursus_id": session.cursus_id,
-        "cursus_name": session.cursus_name or "",
-        "cursus_slug": session.cursus_slug or "",
-        "max_people": session.max_people,
-        "solo": session.solo,
-        "correction_number": session.correction_number,
-        "keywords": ", ".join(session.keywords),
-        "skills": ", ".join(skill_names),
-        "attachment_urls": ", ".join(attachment_urls),
-        "attachment_count": len(attachment_urls),
-        "is_subscriptable": session.is_subscriptable,
-        "begin_at": session.begin_at or "",
-        "end_at": session.end_at or "",
-        "rules": " | ".join(rule_descriptions),
+    # 成功率をパーセンテージ形式に変換
+    success_rate_percent = (
+        f"{session.team_success_rate * 100:.1f}%"
+        if session.team_success_rate is not None
+        else ""
+    )
+
+    # ボディコンテンツをMarkdown形式で作成
+    body_parts = []
+
+    if session.description:
+        body_parts.append(f"## 説明\n\n{session.description}\n")
+
+    body_parts.append("## 基本情報\n\n")
+    body_parts.append(f"- **プロジェクトID**: {session.project_id}\n")
+    body_parts.append(f"- **プロジェクト名**: {session.project_name}\n")
+    body_parts.append(f"- **スラッグ**: {session.project_slug}\n")
+    body_parts.append(f"- **XP**: {session.xp}\n")
+    body_parts.append(f"- **作成日**: {session.creation_date or 'N/A'}\n")
+    body_parts.append(f"- **ステータス**: {session.status or 'N/A'}\n")
+    body_parts.append(f"- **最大人数**: {session.max_people}\n")
+    body_parts.append(f"- **ソロ**: {'はい' if session.solo else 'いいえ'}\n")
+    body_parts.append(f"- **修正回数**: {session.correction_number}\n")
+    body_parts.append(f"- **利用可能**: {'はい' if session.is_subscriptable else 'いいえ'}\n")
+
+    if session.begin_at:
+        body_parts.append(f"- **開始日**: {session.begin_at}\n")
+    if session.end_at:
+        body_parts.append(f"- **終了日**: {session.end_at}\n")
+
+    body_parts.append("\n## コース情報\n\n")
+    body_parts.append(f"- **コースID**: {session.cursus_id}\n")
+    body_parts.append(f"- **コース名**: {session.cursus_name or 'N/A'}\n")
+    body_parts.append(f"- **コーススラッグ**: {session.cursus_slug or 'N/A'}\n")
+
+    if session.keywords:
+        body_parts.append(f"\n## キーワード\n\n{', '.join(session.keywords)}\n")
+
+    if skill_names:
+        body_parts.append(f"\n## スキル\n\n{', '.join(skill_names)}\n")
+
+    if attachment_urls:
+        body_parts.append(f"\n## 添付ファイル ({len(attachment_urls)}件)\n\n")
+        for url in attachment_urls:
+            body_parts.append(f"- [{url}]({url})\n")
+
+    if rule_descriptions:
+        body_parts.append(f"\n## ルール\n\n")
+        for rule in rule_descriptions:
+            body_parts.append(f"- {rule}\n")
+
+    if session.forbidden_rules:
+        body_parts.append(f"\n## 禁止ルール\n\n")
+        for rule in session.forbidden_rules:
+            body_parts.append(f"- {rule}\n")
+
+    if session.recommended_rules:
+        body_parts.append(f"\n## 推奨ルール\n\n")
+        for rule in session.recommended_rules:
+            body_parts.append(f"- {rule}\n")
+
+    if session.team_total_count is not None:
+        body_parts.append(f"\n## チーム統計\n\n")
+        body_parts.append(f"- **総チーム数**: {session.team_total_count}\n")
+        body_parts.append(f"- **成功チーム数**: {session.team_success_count or 0}\n")
+        body_parts.append(f"- **成功率**: {success_rate_percent}\n")
+
+    body = "\n".join(body_parts)
+
+    # プロパティを設定
+    properties = [
+        {
+            "key": "project_id",
+            "text": str(session.project_id),
+        },
+        {
+            "key": "project_slug",
+            "text": session.project_slug,
+        },
+        {
+            "key": "xp",
+            "number": session.xp,
+        },
+        {
+            "key": "cursus_id",
+            "number": session.cursus_id,
+        },
+        {
+            "key": "max_people",
+            "number": session.max_people,
+        },
+        {
+            "key": "solo",
+            "checkbox": session.solo,
+        },
+        {
+            "key": "correction_number",
+            "number": session.correction_number,
+        },
+        {
+            "key": "is_subscriptable",
+            "checkbox": session.is_subscriptable,
+        },
+    ]
+
+    if session.description:
+        properties.append({
+            "key": "description",
+            "text": session.description,
+        })
+
+    if session.cursus_name:
+        properties.append({
+            "key": "cursus_name",
+            "text": session.cursus_name,
+        })
+
+    if session.status:
+        properties.append({
+            "key": "status",
+            "text": session.status,
+        })
+
+    if session.creation_date:
+        properties.append({
+            "key": "creation_date",
+            "text": session.creation_date,
+        })
+
+    if session.begin_at:
+        properties.append({
+            "key": "begin_at",
+            "text": session.begin_at,
+        })
+
+    if session.end_at:
+        properties.append({
+            "key": "end_at",
+            "text": session.end_at,
+        })
+
+    if skill_names:
+        properties.append({
+            "key": "skills",
+            "text": ", ".join(skill_names),
+        })
+
+    if session.keywords:
+        properties.append({
+            "key": "keywords",
+            "text": ", ".join(session.keywords),
+        })
+
+    # アイコンを設定（プロジェクト名の最初の文字を使用）
+    icon = {
+        "emoji": "📄",
+        "format": "emoji",
     }
-    return TableRow(fields=fields)
+
+    return AnytypeObject(
+        name=session.project_name,
+        body=body,
+        type_key="page",
+        icon=icon,
+        properties=properties,
+    )
