@@ -69,22 +69,6 @@ def format_rules(rules: List[Dict[str, Any]]) -> List[str]:
     return rule_descriptions
 
 
-def format_boolean(value: Optional[bool], true_str: str = "はい", false_str: str = "いいえ") -> str:
-    """ブール値を日本語文字列に変換
-
-    Args:
-        value: ブール値
-        true_str: Trueの場合の文字列
-        false_str: Falseの場合の文字列
-
-    Returns:
-        フォーマット済み文字列
-    """
-    if value is None:
-        return ""
-    return true_str if value else false_str
-
-
 def project_session_to_table_row(session: ProjectSession) -> TableRow:
     """ProjectSessionオブジェクトをTableRowに変換
 
@@ -110,13 +94,13 @@ def project_session_to_table_row(session: ProjectSession) -> TableRow:
         "cursus_name": session.cursus_name or "",
         "cursus_slug": session.cursus_slug or "",
         "max_people": session.max_people,
-        "solo": format_boolean(session.solo),
+        "solo": session.solo,
         "correction_number": session.correction_number,
         "keywords": ", ".join(session.keywords),
         "skills": ", ".join(skill_names),
         "attachment_urls": ", ".join(attachment_urls),
         "attachment_count": len(attachment_urls),
-        "is_subscriptable": format_boolean(session.is_subscriptable),
+        "is_subscriptable": session.is_subscriptable,
         "begin_at": session.begin_at or "",
         "end_at": session.end_at or "",
         "rules": " | ".join(rule_descriptions),
