@@ -78,18 +78,63 @@ export SECRET=your_client_secret
 python main.py
 ```
 
+## サブモジュールの使用方法
+
+このプロジェクトは`auth42`と`anytype`の2つのサブモジュールを含んでいます。それぞれは独立して使用することも、コマンドラインから直接実行することもできます。
+
+### auth42モジュールの使用
+
+42 API認証をテストするには：
+
+```bash
+# 環境変数から認証情報を読み込む
+export FORTYTWO_CLIENT_ID=your_client_id
+export FORTYTWO_CLIENT_SECRET=your_client_secret
+python -m auth42.main
+
+# コマンドライン引数で認証情報を指定
+python -m auth42.main --client-id your_client_id --client-secret your_client_secret
+
+# トークン情報を取得
+python -m auth42.main --client-id your_client_id --client-secret your_client_secret --token-info
+```
+
+詳細は`auth42/README.md`を参照してください。
+
+### anytypeモジュールの使用
+
+Anytype API接続をテストするには：
+
+```bash
+# 環境変数からAPIキーを読み込む
+export ANYTYPE_API_KEY=your_api_key
+export ANYTYPE_API_URL=http://localhost:3030
+python -m anytype.main
+
+# コマンドライン引数でAPIキーを指定
+python -m anytype.main --api-key your_api_key --api-url http://localhost:3030
+
+# テーブルIDを指定して接続テスト
+python -m anytype.main --api-key your_api_key --table-id your_table_id
+```
+
+詳細は`anytype/README.md`を参照してください。
+
 ## プロジェクト構造
 
-- `src/auth/`: 42認証モジュール
+- `auth42/`: 42認証モジュール（サブモジュール）
   - `client.py`: 認証クライアント
   - `token.py`: トークン管理
   - `exceptions.py`: 例外クラス
-- `src/api/`: 42 API操作モジュール
-  - `projects.py`: プロジェクト取得
-- `src/anytype/`: Anytype API操作モジュール
+  - `main.py`: コマンドラインエントリーポイント
+- `anytype/`: Anytype API操作モジュール（サブモジュール）
   - `client.py`: APIクライアント
   - `table.py`: テーブル操作
-- `src/config.py`: 設定管理
+  - `main.py`: コマンドラインエントリーポイント
+- `src/`: メインアプリケーション
+  - `config.py`: 設定管理
+  - `projects.py`: プロジェクト取得
+  - `sync.py`: 同期処理
 
 ## エラーハンドリング
 
