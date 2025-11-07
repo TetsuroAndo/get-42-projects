@@ -76,6 +76,9 @@ class ProjectSessionSyncer:
         self.cache: CacheBase = SQLiteCache(db_path=cache_path, logger=logger)
         self.logger.info(f"キャッシュを初期化しました: {cache_path}")
 
+        # 復元済みセッションIDのセット（重複送信を防ぐため）
+        self._restored_session_ids: set[int] = set()
+
     def fetch_sessions(
         self,
         campus_id: Optional[int] = None,
@@ -122,11 +125,13 @@ class ProjectSessionSyncer:
                 session_with_details = self.project42.get_project_session_with_details(session)
                 sessions_with_details.append(session_with_details)
 
-                # キャッシュに保存
-                try:
-                    self.cache.save(session_with_details)
-                except Exception as e:
-                    self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
+                # 復元済みセッションはキャッシュに保存しない（重複送信を防ぐ）
+                if session.id not in self._restored_session_ids:
+                    # キャッシュに保存
+                    try:
+                        self.cache.save(session_with_details)
+                    except Exception as e:
+                        self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
 
                 # 進捗表示
                 if idx % self.config.detail_fetch_interval == 0:
@@ -140,22 +145,26 @@ class ProjectSessionSyncer:
                 )
                 # 詳細情報が取得できなくても基本情報は残す
                 sessions_with_details.append(session)
-                # 基本情報でもキャッシュに保存
-                try:
-                    self.cache.save(session)
-                except Exception as e:
-                    self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
+                # 復元済みセッションはキャッシュに保存しない（重複送信を防ぐ）
+                if session.id not in self._restored_session_ids:
+                    # 基本情報でもキャッシュに保存
+                    try:
+                        self.cache.save(session)
+                    except Exception as e:
+                        self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
             except Exception as e:
                 self.logger.warning(
                     f"セッションID {session.id} ({session.project_name}) の詳細情報取得に予期しないエラーが発生: {e}"
                 )
                 # 詳細情報が取得できなくても基本情報は残す
                 sessions_with_details.append(session)
-                # 基本情報でもキャッシュに保存
-                try:
-                    self.cache.save(session)
-                except Exception as e:
-                    self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
+                # 復元済みセッションはキャッシュに保存しない（重複送信を防ぐ）
+                if session.id not in self._restored_session_ids:
+                    # 基本情報でもキャッシュに保存
+                    try:
+                        self.cache.save(session)
+                    except Exception as e:
+                        self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
 
         self.logger.info(
             f"{len(sessions_with_details)}件のプロジェクトセッションの詳細情報を取得しました"
@@ -383,6 +392,14 @@ class ProjectSessionSyncer:
             success_count, error_count = self.save_to_anytype(objects, pending_sessions)
             result.success_count = success_count
             result.error_count = error_count
+
+            # 送信成功したセッションIDを記録（重複送信を防ぐため）
+            for session in pending_sessions:
+                # キャッシュから削除されたか確認（削除されていれば送信成功）
+                cached_session = self.cache.get(session.id)
+                if cached_session is None:
+                    self._restored_session_ids.add(session.id)
+                    self.logger.debug(f"復元済みセッションIDを記録: session_id={session.id}")
 
             self.logger.info(f"キャッシュ復元完了: 成功 {success_count}件, エラー {error_count}件")
 
