@@ -8,7 +8,9 @@ from dataclasses import dataclass
 
 from auth42 import Auth42
 from src.config import Config
-from src.projects import Project42, ProjectSession, Project42Error
+from src.projects import Project42
+from src.payloads import ProjectSession
+from src.exceptions import SyncError, Project42Error
 from src.converters import project_session_to_object
 from anytype import AnytypeClient, ObjectManager, AnytypeObject
 
@@ -54,7 +56,7 @@ class ProjectSessionSyncer:
         self.logger = logger
 
         # プロジェクト取得クライアントを初期化
-        self.project42 = Project42(auth=auth)
+        self.project42 = Project42(auth=auth, logger=logger, config=config)
 
         # Anytypeクライアントを初期化
         self.anytype_client = AnytypeClient(
@@ -120,9 +122,15 @@ class ProjectSessionSyncer:
                         f"  詳細情報取得進捗: {idx}/{len(sessions)} "
                         f"(プロジェクト: {session.project_name})"
                     )
-            except Exception as e:
+            except Project42Error as e:
                 self.logger.warning(
                     f"セッションID {session.id} ({session.project_name}) の詳細情報取得に失敗: {e}"
+                )
+                # 詳細情報が取得できなくても基本情報は残す
+                sessions_with_details.append(session)
+            except Exception as e:
+                self.logger.warning(
+                    f"セッションID {session.id} ({session.project_name}) の詳細情報取得に予期しないエラーが発生: {e}"
                 )
                 # 詳細情報が取得できなくても基本情報は残す
                 sessions_with_details.append(session)
@@ -253,9 +261,15 @@ class ProjectSessionSyncer:
 
         except Project42Error as e:
             self.logger.error(f"プロジェクト取得エラー: {e}", exc_info=True)
-            raise
+            raise SyncError(
+                "プロジェクト取得中にエラーが発生しました",
+                original_error=e
+            ) from e
         except Exception as e:
-            self.logger.error(f"同期処理中にエラーが発生しました: {e}", exc_info=True)
-            raise
+            self.logger.error(f"同期処理中に予期しないエラーが発生しました: {e}", exc_info=True)
+            raise SyncError(
+                "同期処理中に予期しないエラーが発生しました",
+                original_error=e
+            ) from e
 
         return result
