@@ -132,6 +132,7 @@ class SessionDetailsFetcher:
         """プロジェクトセッションのチーム統計情報を取得
 
         ガイドに基づいて、チームの成績(Success した割合など)を取得します。
+        ページネーションに対応し、全ページを走査してから集計します。
 
         Args:
             project_session_id: プロジェクトセッションID
@@ -143,18 +144,39 @@ class SessionDetailsFetcher:
         headers = self.auth.get_headers()
 
         try:
-            # 完了したチームのみを取得(with_mark=true)
-            params = {"filter[with_mark]": "true"}
-            response = self.http_client.request("GET", url, headers=headers, params=params)
-            response.raise_for_status()
-            teams_data = response.json()
+            # 全ページを走査してチームデータを収集
+            all_teams_data = []
+            page = 1
+            per_page = 100
 
-            total_count = len(teams_data)
+            while True:
+                # 完了したチームのみを取得(with_mark=true)
+                params = {
+                    "filter[with_mark]": "true",
+                    "page": page,
+                    "per_page": per_page,
+                }
+                response = self.http_client.request("GET", url, headers=headers, params=params)
+                response.raise_for_status()
+                teams_data = response.json()
+
+                if not teams_data:
+                    break
+
+                all_teams_data.extend(teams_data)
+
+                # レスポンスがper_page未満なら最後のページ
+                if len(teams_data) < per_page:
+                    break
+
+                page += 1
+
+            total_count = len(all_teams_data)
             success_count = 0
 
             # 成功したチームをカウント
             # validated?がtrue、またはfinal_markが一定以上(例:125以上)の場合を成功とする
-            for team in teams_data:
+            for team in all_teams_data:
                 if team.get("validated") is True:
                     success_count += 1
                 elif team.get("final_mark") is not None:
