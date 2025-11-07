@@ -27,7 +27,7 @@ class CacheBase(ABC):
             session_id: プロジェクトセッションID
 
         Returns:
-            プロジェクトセッション（存在しない場合はNone）
+            プロジェクトセッション(存在しない場合はNone)
         """
         pass
 

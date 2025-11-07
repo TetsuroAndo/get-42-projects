@@ -84,7 +84,7 @@ class ProjectSessionSyncer:
         """プロジェクトセッションを取得
 
         Args:
-            campus_id: キャンパスID（Noneの場合は設定値を使用）
+            campus_id: キャンパスID(Noneの場合は設定値を使用)
             is_subscriptable: 利用可能なプロジェクトのみを取得するか
 
         Returns:
@@ -185,7 +185,7 @@ class ProjectSessionSyncer:
 
         Args:
             objects: オブジェクトのリスト
-            sessions: 対応するプロジェクトセッションのリスト（キャッシュ削除用、オプション）
+            sessions: 対応するプロジェクトセッションのリスト(キャッシュ削除用、オプション)
 
         Returns:
             (成功数, エラー数) のタプル
@@ -257,7 +257,7 @@ class ProjectSessionSyncer:
                 self.logger.error(
                     f"  バッチ追加エラー ({i+1}-{min(i+batch_size, len(objects))}件): {e}"
                 )
-                # 個別に追加を試みる（リトライ結果のみをカウント）
+                # 個別に追加を試みる(リトライ結果のみをカウント)
                 success, errors = self._save_individually(batch, i, batch_sessions)
                 success_count += success
                 error_count += errors
@@ -274,8 +274,8 @@ class ProjectSessionSyncer:
 
         Args:
             batch: 保存するオブジェクトのリスト
-            start_index: 開始インデックス（ログ表示用）
-            sessions: 対応するプロジェクトセッションのリスト（キャッシュ削除用、オプション）
+            start_index: 開始インデックス(ログ表示用)
+            sessions: 対応するプロジェクトセッションのリスト(キャッシュ削除用、オプション)
 
         Returns:
             (成功数, エラー数) のタプル
@@ -311,7 +311,7 @@ class ProjectSessionSyncer:
         """プロジェクトセッションを同期
 
         Args:
-            campus_id: キャンパスID（Noneの場合は設定値を使用）
+            campus_id: キャンパスID(Noneの場合は設定値を使用)
             is_subscriptable: 利用可能なプロジェクトのみを取得するか
 
         Returns:
@@ -337,7 +337,7 @@ class ProjectSessionSyncer:
             # オブジェクトに変換
             objects = self.convert_to_objects(sessions_with_details)
 
-            # Anytypeに保存（セッション情報も渡してキャッシュ削除を可能にする）
+            # Anytypeに保存(セッション情報も渡してキャッシュ削除を可能にする)
             success_count, error_count = self.save_to_anytype(objects, sessions_with_details)
             result.success_count = success_count
             result.error_count = error_count

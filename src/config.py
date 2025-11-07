@@ -22,7 +22,7 @@ class Config:
     anytype_api_url: str = "http://localhost:3030"
     anytype_api_key: str = ""
     anytype_space_id: str = ""
-    anytype_objects_id: Optional[str] = None  # オプション（特定のオブジェクトIDを指定する場合）
+    anytype_objects_id: Optional[str] = None  # オプション(特定のオブジェクトIDを指定する場合)
 
     # その他設定
     token_file: Optional[Path] = None
@@ -31,13 +31,13 @@ class Config:
     detail_fetch_interval: int = 10  # 詳細情報取得の進捗表示間隔
 
     # キャッシュ設定
-    cache_db_path: Optional[Path] = None  # SQLiteキャッシュファイルのパス（Noneの場合はデフォルトパス）
+    cache_db_path: Optional[Path] = None  # SQLiteキャッシュファイルのパス(Noneの場合はデフォルトパス)
 
     # レート制限・リトライ設定
     max_retries: int = 3  # 最大リトライ回数
     rate_limit_threshold: int = 10  # レート制限残りがこの値以下になったら待機
-    base_delay: float = 0.5  # 基本待機時間（秒）
-    max_delay: float = 60.0  # 最大待機時間（秒）
+    base_delay: float = 0.5  # 基本待機時間(秒)
+    max_delay: float = 60.0  # 最大待機時間(秒)
 
     @classmethod
     def from_env(cls) -> "Config":

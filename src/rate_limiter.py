@@ -28,9 +28,9 @@ class RateLimiter:
 
         Args:
             threshold: レート制限残りがこの値以下になったら待機
-            base_delay: 基本待機時間（秒）
-            requests_per_second: 1秒あたりの最大リクエスト数（デフォルト: 2.0）
-            logger: ロガー（オプション）
+            base_delay: 基本待機時間(秒)
+            requests_per_second: 1秒あたりの最大リクエスト数(デフォルト: 2.0)
+            logger: ロガー(オプション)
         """
         self.threshold = threshold
         self.base_delay = base_delay
@@ -38,7 +38,7 @@ class RateLimiter:
         self.min_interval = 1.0 / requests_per_second  # 1秒間に2回 = 0.5秒間隔
         self.logger = logger or logging.getLogger(__name__)
 
-        # 最後のリクエスト時刻を記録（スレッドセーフのためLockを使用）
+        # 最後のリクエスト時刻を記録(スレッドセーフのためLockを使用)
         self._last_request_time: Optional[float] = None
         self._lock = Lock()
 
@@ -58,7 +58,7 @@ class RateLimiter:
                     wait_time = self.min_interval - elapsed
                     self.logger.debug(
                         f"レート制限事前制御: 前回リクエストから{elapsed:.3f}秒経過。"
-                        f"{wait_time:.3f}秒待機します（1秒間に{self.requests_per_second}回の制限）"
+                        f"{wait_time:.3f}秒待機します(1秒間に{self.requests_per_second}回の制限)"
                     )
                     time.sleep(wait_time)
                     current_time = time.time()
@@ -91,7 +91,7 @@ class RateLimiter:
 
                             if wait_time > 0:
                                 self.logger.warning(
-                                    f"レート制限が近づいています（残り: {remaining}）。"
+                                    f"レート制限が近づいています(残り: {remaining})。"
                                     f"{wait_time}秒待機します..."
                                 )
                                 time.sleep(wait_time)
@@ -101,7 +101,7 @@ class RateLimiter:
                         except (ValueError, TypeError):
                             # リセット時刻が取得できない場合は基本待機時間を使用
                             self.logger.warning(
-                                f"レート制限が近づいています（残り: {remaining}）。"
+                                f"レート制限が近づいています(残り: {remaining})。"
                                 f"{self.base_delay}秒待機します..."
                             )
                             time.sleep(self.base_delay)
@@ -110,7 +110,7 @@ class RateLimiter:
                     else:
                         # リセット時刻が不明な場合は基本待機時間を使用
                         self.logger.warning(
-                            f"レート制限が近づいています（残り: {remaining}）。"
+                            f"レート制限が近づいています(残り: {remaining})。"
                             f"{self.base_delay}秒待機します..."
                         )
                         time.sleep(self.base_delay)
@@ -127,7 +127,7 @@ class RateLimiter:
             response: HTTPレスポンス
 
         Returns:
-            Retry-Afterの値（秒）、取得できない場合はNone
+            Retry-Afterの値(秒)、取得できない場合はNone
         """
         retry_after = response.headers.get("Retry-After")
         if retry_after:

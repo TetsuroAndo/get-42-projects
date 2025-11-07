@@ -18,7 +18,7 @@ def setup_logger(
 
     Args:
         name: ロガー名
-        log_file: ログファイルのパス（Noneの場合はファイル出力なし）
+        log_file: ログファイルのパス(Noneの場合はファイル出力なし)
         log_level: ログレベル
         console: コンソール出力を行うか
 
@@ -28,10 +28,10 @@ def setup_logger(
     logger = logging.getLogger(name)
     logger.setLevel(log_level)
 
-    # 既存のハンドラーをクリア（重複を防ぐ）
+    # 既存のハンドラーをクリア(重複を防ぐ)
     logger.handlers.clear()
 
-    # ファイルハンドラー（ログファイルに記録）
+    # ファイルハンドラー(ログファイルに記録)
     if log_file:
         log_path = Path(log_file)
         # ログディレクトリを作成
@@ -46,7 +46,7 @@ def setup_logger(
         file_handler.setFormatter(file_formatter)
         logger.addHandler(file_handler)
 
-    # コンソールハンドラー（標準出力にも記録）
+    # コンソールハンドラー(標準出力にも記録)
     if console:
         console_handler = logging.StreamHandler(sys.stdout)
         console_handler.setLevel(log_level)

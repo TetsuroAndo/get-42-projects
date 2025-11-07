@@ -21,7 +21,7 @@ class SQLiteCache(CacheBase):
 
         Args:
             db_path: SQLiteデータベースファイルのパス
-            logger: ロガー（オプション）
+            logger: ロガー(オプション)
         """
         self.db_path = db_path
         self.logger = logger or logging.getLogger(__name__)
@@ -100,7 +100,7 @@ class SQLiteCache(CacheBase):
             session_id: プロジェクトセッションID
 
         Returns:
-            プロジェクトセッション（存在しない場合はNone）
+            プロジェクトセッション(存在しない場合はNone)
         """
         try:
             with self._get_connection() as conn:
