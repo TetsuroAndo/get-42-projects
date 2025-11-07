@@ -133,8 +133,23 @@ python -m anytype.main --api-key your_api_key --table-id your_table_id
   - `main.py`: コマンドラインエントリーポイント
 - `src/`: メインアプリケーション
   - `config.py`: 設定管理
-  - `projects.py`: プロジェクト取得
-  - `sync.py`: 同期処理
+  - `converters.py`: データ変換処理
+  - `exceptions.py`: 例外クラス
+  - `http_client.py`: HTTPクライアント
+  - `logger.py`: ロギング設定
+  - `payloads.py`: データモデル
+  - `rate_limiter.py`: レート制限管理
+  - `anytype_sync/`: Anytypeへの同期処理
+    - `syncer.py`: メイン同期ロジック
+    - `cache_manager.py`: キャッシュ管理
+    - `batch_processor.py`: バッチ処理
+  - `fortytwo_api/`: 42のAPIクライアント
+    - `client.py`: メインAPIクライアント
+    - `api_client.py`: API共通処理
+    - `session_details.py`: セッション詳細取得
+  - `cache/`: キャッシュ管理
+    - `base.py`: キャッシュ基底クラス
+    - `sqlite_cache.py`: SQLiteキャッシュ実装
 
 ## エラーハンドリング
 
@@ -165,21 +180,18 @@ python -m anytype.main --api-key your_api_key --table-id your_table_id
 - **500**: サーバーエラー
 
 ```python
-from src.auth import Auth42
-from src.api import Project42
-from src.anytype import AnytypeClient, TableManager, TableRow
+from auth42 import Auth42
+from src import Project42, ProjectSessionSyncer
+from anytype import AnytypeClient, ObjectManager
 
 # 認証
 auth = Auth42(client_id="...", client_secret="...")
 
 # プロジェクト取得
 project42 = Project42(auth=auth)
-projects = project42.get_all_projects()
+sessions = project42.get_all_project_sessions()
 
-# Anytypeに追加
-client = AnytypeClient(api_key="...")
-table = TableManager(client=client, table_id="...")
-for project in projects:
-    row = TableRow(fields={...})
-    table.create_row(row)
+# Anytypeに同期
+syncer = ProjectSessionSyncer(config=config, auth=auth, logger=logger)
+result = syncer.sync()
 ```
