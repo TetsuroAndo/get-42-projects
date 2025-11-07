@@ -190,12 +190,39 @@ class ProjectSessionSyncer:
         Returns:
             (成功数, エラー数) のタプル
         """
+        # objectsとsessionsの順序が一致していることを確認
+        if sessions is not None:
+            if len(objects) != len(sessions):
+                raise SyncError(
+                    f"objectsとsessionsの長さが一致しません: "
+                    f"objects={len(objects)}, sessions={len(sessions)}"
+                )
+
+            # 各オブジェクトの名前と対応するセッションのプロジェクト名が一致しているか確認
+            mismatches = []
+            for idx, (obj, session) in enumerate(zip(objects, sessions)):
+                if obj.name != session.project_name:
+                    mismatches.append(
+                        f"インデックス {idx}: オブジェクト名='{obj.name}', "
+                        f"セッション名='{session.project_name}'"
+                    )
+
+            if mismatches:
+                error_msg = (
+                    "objectsとsessionsの順序が一致していません。"
+                    f"不一致が{len(mismatches)}件見つかりました:\n"
+                    + "\n".join(mismatches[:10])  # 最初の10件のみ表示
+                )
+                if len(mismatches) > 10:
+                    error_msg += f"\n... 他{len(mismatches) - 10}件"
+                self.logger.error(error_msg)
+                raise SyncError(error_msg)
+
         self.logger.info("Anytypeにオブジェクトを追加中...")
         batch_size = self.config.batch_size
         success_count = 0
         error_count = 0
 
-        # objectsとsessionsの順序が一致していることを前提として処理
         for i in range(0, len(objects), batch_size):
             batch = objects[i:i + batch_size]
             batch_sessions = sessions[i:i + batch_size] if sessions else None
