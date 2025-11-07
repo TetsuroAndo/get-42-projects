@@ -122,6 +122,30 @@ def _get_float_env(key: str, default: Optional[float] = None) -> Optional[float]
         return default
 
 
+def get_project_root() -> Path:
+    """プロジェクトルートディレクトリを取得
+
+    カレントディレクトリから親ディレクトリへ遡りながら、
+    pyproject.toml が存在するディレクトリをプロジェクトルートとして返します。
+
+    Returns:
+        Path: プロジェクトルートディレクトリのPathオブジェクト
+
+    Raises:
+        RuntimeError: プロジェクトルートが見つからない場合
+    """
+    current = Path.cwd()
+    for parent in [current] + list(current.parents):
+        if (parent / "pyproject.toml").exists():
+            return parent.resolve()
+
+    raise RuntimeError(
+        "プロジェクトルートディレクトリが見つかりません。"
+        "pyproject.tomlが存在するディレクトリで実行してください。"
+    )
+
+
 def get_default_cache_path() -> Path:
     """デフォルトのキャッシュファイルパスを取得"""
-    return Path.home() / ".get_42_projects" / "cache.db"
+    project_root = get_project_root()
+    return project_root / ".cache" / "cache.db"
