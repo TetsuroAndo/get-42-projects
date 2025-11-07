@@ -98,7 +98,7 @@ class ProjectSession:
     recommended_rules: List[str] = field(default_factory=list)  # 推奨条件
     team_total_count: Optional[int] = None  # チーム総数
     team_success_count: Optional[int] = None  # 成功チーム数
-    team_success_rate: Optional[float] = None  # 成功率（0.0-1.0）
+    team_success_rate: Optional[float] = None  # 成功率(0.0-1.0)
 
     @classmethod
     def from_api_response(cls, data: Dict[str, Any]) -> "ProjectSession":

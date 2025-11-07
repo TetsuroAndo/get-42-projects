@@ -34,8 +34,8 @@ class Project42:
 
         Args:
             auth: 42認証オブジェクト
-            logger: ロガー（オプション）
-            config: 設定オブジェクト（オプション）
+            logger: ロガー(オプション)
+            config: 設定オブジェクト(オプション)
         """
         self.auth = auth
         self.logger = logger or logging.getLogger(__name__)
@@ -73,8 +73,8 @@ class Project42:
         """プロジェクト一覧を取得
 
         Args:
-            campus_id: キャンパスID（オプション）
-            cursus_id: カリキュラムID（オプション、デフォルト: 21 (Piscine C)）
+            campus_id: キャンパスID(オプション)
+            cursus_id: カリキュラムID(オプション、デフォルト: 21 (Piscine C))
             page: ページ番号
             per_page: 1ページあたりの項目数
             **kwargs: その他のフィルター条件
@@ -272,11 +272,11 @@ class Project42:
         cursus_id: Optional[int] = None,
         **kwargs
     ) -> List[Project]:
-        """全プロジェクトを取得（ページネーション対応）
+        """全プロジェクトを取得(ページネーション対応)
 
         Args:
-            campus_id: キャンパスID（オプション）
-            cursus_id: カリキュラムID（オプション）
+            campus_id: キャンパスID(オプション)
+            cursus_id: カリキュラムID(オプション)
             **kwargs: その他のフィルター条件
 
         Returns:
@@ -321,8 +321,8 @@ class Project42:
         ガイドに基づいて、東京キャンパスのカリキュラムプロジェクト情報を取得します。
 
         Args:
-            campus_id: キャンパスID（オプション、東京キャンパスは9）
-            is_subscriptable: 利用可能なプロジェクトのみを取得するか（デフォルト: True）
+            campus_id: キャンパスID(オプション、東京キャンパスは9)
+            is_subscriptable: 利用可能なプロジェクトのみを取得するか(デフォルト: True)
             page: ページ番号
             per_page: 1ページあたりの項目数
             **kwargs: その他のフィルター条件
@@ -396,11 +396,11 @@ class Project42:
         is_subscriptable: Optional[bool] = True,
         **kwargs
     ) -> List[ProjectSession]:
-        """全プロジェクトセッションを取得（ページネーション対応）
+        """全プロジェクトセッションを取得(ページネーション対応)
 
         Args:
-            campus_id: キャンパスID（オプション、東京キャンパスは9）
-            is_subscriptable: 利用可能なプロジェクトのみを取得するか（デフォルト: True）
+            campus_id: キャンパスID(オプション、東京キャンパスは9)
+            is_subscriptable: 利用可能なプロジェクトのみを取得するか(デフォルト: True)
             **kwargs: その他のフィルター条件
 
         Returns:
@@ -458,7 +458,7 @@ class Project42:
             # Project42Errorはそのまま再スロー
             raise
         except requests.exceptions.RequestException as e:
-            # エラー時は空リストを返す（ログに記録はしない）
+            # エラー時は空リストを返す(ログに記録はしない)
             self.logger.debug(f"スキル情報取得エラー (session_id={project_session_id}): {e}")
             return []
 
@@ -482,7 +482,7 @@ class Project42:
             # Project42Errorはそのまま再スロー
             raise
         except requests.exceptions.RequestException as e:
-            # エラー時は空リストを返す（ログに記録はしない）
+            # エラー時は空リストを返す(ログに記録はしない)
             self.logger.debug(f"添付ファイル情報取得エラー (session_id={project_session_id}): {e}")
             return []
 
@@ -533,28 +533,28 @@ class Project42:
             # Project42Errorはそのまま再スロー
             raise
         except requests.exceptions.RequestException as e:
-            # エラー時は空リストを返す（ログに記録はしない）
+            # エラー時は空リストを返す(ログに記録はしない)
             self.logger.debug(f"ルール情報取得エラー (session_id={project_session_id}): {e}")
             return []
 
     def get_project_session_teams(self, project_session_id: int) -> Dict[str, Any]:
         """プロジェクトセッションのチーム統計情報を取得
 
-        ガイドに基づいて、チームの成績（Success した割合など）を取得します。
+        ガイドに基づいて、チームの成績(Success した割合など)を取得します。
 
         Args:
             project_session_id: プロジェクトセッションID
 
         Returns:
-            チーム統計情報の辞書（total_count, success_count, success_rate）
+            チーム統計情報の辞書(total_count, success_count, success_rate)
         """
         url = f"{self.BASE_URL}/v2/project_sessions/{project_session_id}/teams"
         headers = self.auth.get_headers()
 
         try:
-            # 完了したチームのみを取得（with_mark=true）
+            # 完了したチームのみを取得(with_mark=true)
             params = {"filter[with_mark]": "true"}
-            response = self._make_request_with_retry("GET", url, headers=headers, params=params)
+            response = self.http_client.request("GET", url, headers=headers, params=params)
             response.raise_for_status()
             teams_data = response.json()
 
@@ -562,12 +562,12 @@ class Project42:
             success_count = 0
 
             # 成功したチームをカウント
-            # validated?がtrue、またはfinal_markが一定以上（例：125以上）の場合を成功とする
+            # validated?がtrue、またはfinal_markが一定以上(例:125以上)の場合を成功とする
             for team in teams_data:
                 if team.get("validated") is True:
                     success_count += 1
                 elif team.get("final_mark") is not None:
-                    # final_markが125以上の場合も成功とみなす（42の一般的な合格基準）
+                    # final_markが125以上の場合も成功とみなす(42の一般的な合格基準)
                     if team.get("final_mark", 0) >= 125:
                         success_count += 1
 
@@ -591,7 +591,7 @@ class Project42:
             }
 
     def categorize_rules(self, rules: List[Dict[str, Any]]) -> Tuple[List[str], List[str]]:
-        """ルールをForbidden（禁止）とRecommended（推奨）に分類
+        """ルールをForbidden(禁止)とRecommended(推奨)に分類
 
         Args:
             rules: ルール情報のリスト
@@ -621,16 +621,16 @@ class Project42:
             # ルール名や説明に「recommended」「推奨」「suggested」などのキーワードが含まれる場合
             elif any(keyword in rule_text_lower for keyword in ["recommended", "推奨", "suggested", "should"]):
                 recommended_rules.append(rule_text)
-            # kindがinscription（登録条件）でrequiredがFalseの場合は推奨とみなす
+            # kindがinscription(登録条件)でrequiredがFalseの場合は推奨とみなす
             elif rule_kind == "inscription" and rule.get("required") is False:
                 recommended_rules.append(rule_text)
-            # kindがinscriptionでrequiredがTrueの場合は必須条件（禁止ではないが、必須として扱う）
+            # kindがinscriptionでrequiredがTrueの場合は必須条件(禁止ではないが、必須として扱う)
             # その他のルールは説明に基づいて判定
 
         return forbidden_rules, recommended_rules
 
     def get_project_session_with_details(self, session: ProjectSession) -> ProjectSession:
-        """プロジェクトセッションの詳細情報（スキル、添付ファイル、ルール、チーム統計）を取得して更新
+        """プロジェクトセッションの詳細情報(スキル、添付ファイル、ルール、チーム統計)を取得して更新
 
         Args:
             session: プロジェクトセッションオブジェクト
@@ -652,8 +652,8 @@ class Project42:
         session.forbidden_rules = forbidden_rules
         session.recommended_rules = recommended_rules
 
-        # 評価の回数（correction_number）を取得
-        # 評価（evaluations）エンドポイントから取得を試みる
+        # 評価の回数(correction_number)を取得
+        # 評価(evaluations)エンドポイントから取得を試みる
         try:
             evaluations_url = f"{self.BASE_URL}/v2/project_sessions/{session.id}/evaluations"
             headers = self.auth.get_headers()

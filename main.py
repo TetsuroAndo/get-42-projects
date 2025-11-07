@@ -56,6 +56,23 @@ def main():
             logger=logger,
         )
 
+        # 起動時にキャッシュから未送信のセッションを復元
+        logger.info("キャッシュからの復元処理を開始します...")
+        try:
+            cache_result = syncer.restore_from_cache()
+            if cache_result.total_sessions > 0:
+                logger.info("=" * 60)
+                logger.info("キャッシュ復元処理が完了しました")
+                logger.info(f"  {cache_result}")
+                logger.info("=" * 60)
+            else:
+                logger.info("復元するキャッシュはありませんでした")
+        except SyncError as e:
+            logger.warning(f"キャッシュ復元中にエラーが発生しましたが、処理を続行します: {e}")
+        except Exception as e:
+            logger.error(f"キャッシュ復元中に予期せぬエラーが発生しましたが、処理を続行します: {e}", exc_info=True)
+
+        # メインの同期処理を実行
         result = syncer.sync(
             campus_id=config.fortytwo_campus_id,
             is_subscriptable=True,  # 利用可能なプロジェクトのみ

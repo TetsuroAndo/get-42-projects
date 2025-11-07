@@ -235,7 +235,7 @@ def project_session_to_object(session: ProjectSession) -> AnytypeObject:
             "text": ", ".join(session.keywords),
         })
 
-    # アイコンを設定（プロジェクト名の最初の文字を使用）
+    # アイコンを設定(プロジェクト名の最初の文字を使用)
     icon = {
         "emoji": "📄",
         "format": "emoji",

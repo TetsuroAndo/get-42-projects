@@ -37,11 +37,11 @@ class HTTPClient:
         """HTTPクライアントの初期化
 
         Args:
-            rate_limiter: レート制限管理オブジェクト（オプション）
+            rate_limiter: レート制限管理オブジェクト(オプション)
             max_retries: 最大リトライ回数
-            base_delay: 基本待機時間（秒）
-            max_delay: 最大待機時間（秒）
-            logger: ロガー（オプション）
+            base_delay: 基本待機時間(秒)
+            max_delay: 最大待機時間(秒)
+            logger: ロガー(オプション)
         """
         self.rate_limiter = rate_limiter
         self.max_retries = max_retries
@@ -60,7 +60,7 @@ class HTTPClient:
         """リトライ機能付きリクエスト送信
 
         Args:
-            method: HTTPメソッド（'GET', 'POST'など）
+            method: HTTPメソッド('GET', 'POST'など)
             url: リクエストURL
             params: クエリパラメータ
             headers: リクエストヘッダー
@@ -77,7 +77,7 @@ class HTTPClient:
 
         while retry_count <= self.max_retries:
             try:
-                # リクエスト情報をログに出力（初回のみ）
+                # リクエスト情報をログに出力(初回のみ)
                 if retry_count == 0:
                     self.logger.info(f"リクエスト送信: {method} {url}")
                     if params:
@@ -87,7 +87,7 @@ class HTTPClient:
                 if retry_count > 0:
                     self.logger.info(f"リトライ {retry_count}/{self.max_retries}: {method} {url}")
 
-                # リクエスト送信前にレート制限の事前制御（1秒間に2回の制限）
+                # リクエスト送信前にレート制限の事前制御(1秒間に2回の制限)
                 if self.rate_limiter:
                     self.rate_limiter.wait_if_needed()
 
@@ -98,12 +98,12 @@ class HTTPClient:
                 if self.rate_limiter:
                     self.rate_limiter.check_and_wait(response)
 
-                # 429エラー（Too Many Requests）の処理
+                # 429エラー(Too Many Requests)の処理
                 if response.status_code == 429:
                     retry_after = self.rate_limiter.get_retry_after(response) if self.rate_limiter else None
                     if retry_after:
                         self.logger.warning(
-                            f"レート制限エラー（429）: Retry-After={retry_after}秒。"
+                            f"レート制限エラー(429): Retry-After={retry_after}秒。"
                             f"待機してからリトライします... (試行 {retry_count + 1}/{self.max_retries + 1})"
                         )
                         time.sleep(retry_after)
@@ -114,7 +114,7 @@ class HTTPClient:
                     if retry_count < self.max_retries:
                         delay = min(self.base_delay * (2 ** retry_count), self.max_delay)
                         self.logger.warning(
-                            f"レート制限エラー（429）: {delay:.2f}秒待機してからリトライします... "
+                            f"レート制限エラー(429): {delay:.2f}秒待機してからリトライします... "
                             f"(試行 {retry_count + 1}/{self.max_retries + 1})"
                         )
                         time.sleep(delay)
@@ -122,7 +122,7 @@ class HTTPClient:
                         continue
                     else:
                         raise RateLimitError(
-                            f"レート制限エラー: 最大リトライ回数（{self.max_retries}回）に達しました",
+                            f"レート制限エラー: 最大リトライ回数({self.max_retries}回)に達しました",
                             retry_after=retry_after,
                             response_text=response.text
                         )
@@ -131,7 +131,7 @@ class HTTPClient:
                 if response.status_code in [400, 401, 403, 404]:
                     return response
 
-                # その他のエラー（500番台など）はリトライ可能
+                # その他のエラー(500番台など)はリトライ可能
                 if not response.ok:
                     if retry_count < self.max_retries:
                         delay = min(self.base_delay * (2 ** retry_count), self.max_delay)
@@ -144,7 +144,7 @@ class HTTPClient:
                         continue
                     else:
                         raise APIError(
-                            f"HTTPエラー {response.status_code}: 最大リトライ回数（{self.max_retries}回）に達しました",
+                            f"HTTPエラー {response.status_code}: 最大リトライ回数({self.max_retries}回)に達しました",
                             status_code=response.status_code,
                             response_text=response.text
                         )
@@ -165,7 +165,7 @@ class HTTPClient:
                     continue
                 else:
                     raise ConnectionError(
-                        f"APIへの接続に失敗しました。最大リトライ回数（{self.max_retries}回）に達しました",
+                        f"APIへの接続に失敗しました。最大リトライ回数({self.max_retries}回)に達しました",
                         original_error=e
                     ) from e
 
@@ -182,7 +182,7 @@ class HTTPClient:
                     continue
                 else:
                     raise TimeoutError(
-                        f"リクエストがタイムアウトしました。最大リトライ回数（{self.max_retries}回）に達しました",
+                        f"リクエストがタイムアウトしました。最大リトライ回数({self.max_retries}回)に達しました",
                         timeout=None,
                         original_error=e
                     ) from e
@@ -200,7 +200,7 @@ class HTTPClient:
                     continue
                 else:
                     raise NetworkError(
-                        f"リクエスト中にエラーが発生しました。最大リトライ回数（{self.max_retries}回）に達しました",
+                        f"リクエスト中にエラーが発生しました。最大リトライ回数({self.max_retries}回)に達しました",
                         original_error=e
                     ) from e
 
