@@ -77,7 +77,7 @@ class SQLiteCache(CacheBase):
                     # 更新
                     conn.execute("""
                         UPDATE cache
-                        SET data = ?, updated_at = ?
+                        SET data = ?, updated_at = ?, status = 'pending'
                         WHERE session_id = ?
                     """, (data_json, now, session.id))
                 else:
