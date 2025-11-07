@@ -5,9 +5,13 @@ description = "42からプロジェクト情報を取得し、Anytypeにイン�
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "python-dotenv>=1.2.1",
     "requests>=2.31.0",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
