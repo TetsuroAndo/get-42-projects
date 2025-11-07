@@ -4,16 +4,23 @@
 ガイドに基づいて、プロジェクトセッション情報を取得します。
 """
 import sys
-
+from dotenv import load_dotenv
 from src.config import Config
 from src.logger import setup_logger
 from src.sync import ProjectSessionSyncer
 from auth42 import Auth42, TokenManager, TokenError, Auth42Error
-from src import Project42Error
+from src import (
+    Project42Error,
+    ConfigurationError,
+    SyncError,
+)
 
 
 def main():
     """メイン処理"""
+    # .envファイルから環境変数を読み込む
+    load_dotenv()
+
     logger = None
 
     try:
@@ -63,6 +70,12 @@ def main():
         if result.error_count > 0:
             sys.exit(1)
 
+    except ConfigurationError as e:
+        if logger:
+            logger.error(f"設定エラー: {e}", exc_info=True)
+        else:
+            print(f"設定エラー: {e}", file=sys.stderr)
+        sys.exit(1)
     except ValueError as e:
         if logger:
             logger.error(f"設定エラー: {e}", exc_info=True)
@@ -80,6 +93,12 @@ def main():
             logger.error(f"プロジェクト取得エラー: {e}", exc_info=True)
         else:
             print(f"プロジェクト取得エラー: {e}", file=sys.stderr)
+        sys.exit(1)
+    except SyncError as e:
+        if logger:
+            logger.error(f"同期エラー: {e}", exc_info=True)
+        else:
+            print(f"同期エラー: {e}", file=sys.stderr)
         sys.exit(1)
     except Exception as e:
         if logger:
