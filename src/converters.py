@@ -4,7 +4,7 @@
 """
 from typing import Dict, Any, List, Optional
 from anytype import AnytypeObject
-from src.projects import ProjectSession
+from src.payloads import ProjectSession
 
 
 def extract_skill_names(skills: List[Dict[str, Any]]) -> List[str]:

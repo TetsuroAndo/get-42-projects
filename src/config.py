@@ -6,6 +6,7 @@ import os
 from typing import Optional
 from pathlib import Path
 from dataclasses import dataclass
+from src.exceptions import ConfigurationError
 
 
 @dataclass
@@ -28,6 +29,12 @@ class Config:
     log_file: str = "get_42_projects.log"
     batch_size: int = 50
     detail_fetch_interval: int = 10  # 詳細情報取得の進捗表示間隔
+
+    # レート制限・リトライ設定
+    max_retries: int = 3  # 最大リトライ回数
+    rate_limit_threshold: int = 10  # レート制限残りがこの値以下になったら待機
+    base_delay: float = 0.5  # 基本待機時間（秒）
+    max_delay: float = 60.0  # 最大待機時間（秒）
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -53,23 +60,32 @@ class Config:
             log_file=os.getenv("LOG_FILE", "get_42_projects.log"),
             batch_size=_get_int_env("BATCH_SIZE", default=50),
             detail_fetch_interval=_get_int_env("DETAIL_FETCH_INTERVAL", default=10),
+            max_retries=_get_int_env("MAX_RETRIES", default=3),
+            rate_limit_threshold=_get_int_env("RATE_LIMIT_THRESHOLD", default=10),
+            base_delay=_get_float_env("BASE_DELAY", default=0.5),
+            max_delay=_get_float_env("MAX_DELAY", default=60.0),
         )
 
     def validate(self) -> None:
         """設定の妥当性を検証"""
         errors = []
+        missing_fields = []
 
         if not self.fortytwo_client_id:
             errors.append("FT_UID が設定されていません")
+            missing_fields.append("FT_UID")
         if not self.fortytwo_client_secret:
             errors.append("FT_SECRET が設定されていません")
+            missing_fields.append("FT_SECRET")
         if not self.anytype_api_key:
             errors.append("ANYTYPE_API_KEY が設定されていません")
+            missing_fields.append("ANYTYPE_API_KEY")
         if not self.anytype_space_id:
             errors.append("ANYTYPE_SPACE_ID が設定されていません")
+            missing_fields.append("ANYTYPE_SPACE_ID")
 
         if errors:
-            raise ValueError("\n".join(errors))
+            raise ConfigurationError("\n".join(errors), missing_fields=missing_fields)
 
 
 def _get_int_env(key: str, default: Optional[int] = None) -> Optional[int]:
@@ -89,3 +105,14 @@ def _get_path_env(key: str) -> Optional[Path]:
     if value is None:
         return None
     return Path(value)
+
+
+def _get_float_env(key: str, default: Optional[float] = None) -> Optional[float]:
+    """環境変数を浮動小数点数として取得"""
+    value = os.getenv(key)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
