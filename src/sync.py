@@ -254,11 +254,10 @@ class ProjectSessionSyncer:
                 if batch_error_indices:
                     self.logger.warning(f"  {len(batch_error_indices)}件のオブジェクトでエラーが発生しました")
             except Exception as e:
-                error_count += len(batch)
                 self.logger.error(
                     f"  バッチ追加エラー ({i+1}-{min(i+batch_size, len(objects))}件): {e}"
                 )
-                # 個別に追加を試みる
+                # 個別に追加を試みる（リトライ結果のみをカウント）
                 success, errors = self._save_individually(batch, i, batch_sessions)
                 success_count += success
                 error_count += errors

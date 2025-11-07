@@ -42,7 +42,7 @@ class SQLiteCache(CacheBase):
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            # インデックスを作成（パフォーマンス向上）
+            # インデックスを作成(パフォーマンス向上)
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_status
                 ON cache(status)
@@ -63,11 +63,7 @@ class SQLiteCache(CacheBase):
         """
         try:
             data_json = json.dumps(session.to_dict(), ensure_ascii=False)
-from datetime import datetime, timezone
-
-...
-
-            now = datetime.now(timezone.utc).isoformat()
+            now = datetime.utcnow().isoformat()
 
             with self._get_connection() as conn:
                 # 既存のレコードがあるかチェック
