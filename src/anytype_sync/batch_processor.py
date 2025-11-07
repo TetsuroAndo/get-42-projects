@@ -95,26 +95,14 @@ class BatchProcessor:
                 self.logger.error(
                     f"  バッチ追加エラー ({i+1}-{min(i+self.batch_size, len(objects))}件): {e}"
                 )
-                # create_objectsが例外を投げた場合、部分的に成功した可能性がある
-                # キャッシュから削除されたセッションは既に作成されていると判断
-                already_created_indices = []
-                if batch_sessions:
-                    for idx, session in enumerate(batch_sessions):
-                        cached_session = self.cache_manager.get_session(session.id)
-                        if cached_session is None:
-                            # キャッシュから削除されていれば既に作成済み
-                            already_created_indices.append(idx)
-                            success_count += 1
-                            self.logger.debug(f"既に作成済みと判断: session_id={session.id}")
-
-                # 未作成のオブジェクトのみを個別に再試行
-                remaining_indices = [idx for idx in range(len(batch)) if idx not in already_created_indices]
-                if remaining_indices:
-                    remaining_objects = [batch[idx] for idx in remaining_indices]
-                    remaining_sessions = [batch_sessions[idx] for idx in remaining_indices] if batch_sessions else None
-                    success, errors = self._save_individually(remaining_objects, i, remaining_sessions)
-                    success_count += success
-                    error_count += errors
+                # create_objectsが例外を投げた場合、実際の作成結果が不明なため
+                # キャッシュの状態に依存せず、すべてのオブジェクトを個別に再試行する
+                # キャッシュの欠落は、キャッシュの失敗、破損、またはセッションが
+                # 最初からキャッシュされていないことを示している可能性があるため、
+                # 成功の証拠として使用できない
+                success, errors = self._save_individually(batch, i, batch_sessions)
+                success_count += success
+                error_count += errors
 
         return success_count, error_count
 
