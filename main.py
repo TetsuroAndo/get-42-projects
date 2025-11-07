@@ -7,7 +7,7 @@ import sys
 from dotenv import load_dotenv
 from src.config import Config
 from src.logger import setup_logger
-from src.sync import ProjectSessionSyncer
+from src import ProjectSessionSyncer
 from auth42 import Auth42, TokenManager, TokenError, Auth42Error
 from src import (
     Project42Error,

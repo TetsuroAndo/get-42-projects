@@ -90,6 +90,51 @@ def project_session_to_object(session: ProjectSession) -> AnytypeObject:
     )
 
     # ボディコンテンツをMarkdown形式で作成
+    body = _build_markdown_body(
+        session,
+        skill_names,
+        attachment_urls,
+        rule_descriptions,
+        success_rate_percent
+    )
+
+    # プロパティを設定
+    properties = _build_properties(session, skill_names)
+
+    # アイコンを設定(プロジェクト名の最初の文字を使用)
+    icon = {
+        "emoji": "📄",
+        "format": "emoji",
+    }
+
+    return AnytypeObject(
+        name=session.project_name,
+        body=body,
+        type_key="page",
+        icon=icon,
+        properties=properties,
+    )
+
+
+def _build_markdown_body(
+    session: ProjectSession,
+    skill_names: List[str],
+    attachment_urls: List[str],
+    rule_descriptions: List[str],
+    success_rate_percent: str
+) -> str:
+    """Markdown形式のボディコンテンツを構築
+
+    Args:
+        session: プロジェクトセッションオブジェクト
+        skill_names: スキル名のリスト
+        attachment_urls: 添付ファイルURLのリスト
+        rule_descriptions: ルール説明のリスト
+        success_rate_percent: 成功率のパーセンテージ文字列
+
+    Returns:
+        Markdown形式のボディ文字列
+    """
     body_parts = []
 
     if session.description:
@@ -149,9 +194,19 @@ def project_session_to_object(session: ProjectSession) -> AnytypeObject:
         body_parts.append(f"- **成功チーム数**: {session.team_success_count or 0}\n")
         body_parts.append(f"- **成功率**: {success_rate_percent}\n")
 
-    body = "\n".join(body_parts)
+    return "\n".join(body_parts)
 
-    # プロパティを設定
+
+def _build_properties(session: ProjectSession, skill_names: List[str]) -> List[Dict[str, Any]]:
+    """Anytypeオブジェクトのプロパティリストを構築
+
+    Args:
+        session: プロジェクトセッションオブジェクト
+        skill_names: スキル名のリスト
+
+    Returns:
+        プロパティのリスト
+    """
     properties = [
         {
             "key": "project_id",
@@ -235,16 +290,4 @@ def project_session_to_object(session: ProjectSession) -> AnytypeObject:
             "text": ", ".join(session.keywords),
         })
 
-    # アイコンを設定(プロジェクト名の最初の文字を使用)
-    icon = {
-        "emoji": "📄",
-        "format": "emoji",
-    }
-
-    return AnytypeObject(
-        name=session.project_name,
-        body=body,
-        type_key="page",
-        icon=icon,
-        properties=properties,
-    )
+    return properties

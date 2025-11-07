@@ -2,7 +2,7 @@
 
 42のAPIからプロジェクト情報を取得するモジュールです。
 """
-from .projects import Project42
+from .fortytwo_api import Project42
 from .payloads import Project, ProjectSession
 from .rate_limiter import RateLimiter
 from .http_client import HTTPClient
@@ -25,7 +25,7 @@ from auth42.exceptions import AuthenticationError, AuthorizationError
 from .config import Config
 from .logger import setup_logger
 from .converters import project_session_to_object
-from .sync import ProjectSessionSyncer, SyncResult
+from .anytype_sync import ProjectSessionSyncer, SyncResult
 
 __all__ = [
     "Project42",
