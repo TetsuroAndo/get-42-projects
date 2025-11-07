@@ -2,7 +2,7 @@
 
 42のAPIデータをAnytypeオブジェクト形式に変換する処理を担当します。
 """
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from anytype import AnytypeObject
 from src.payloads import ProjectSession
 
@@ -129,22 +129,22 @@ def project_session_to_object(session: ProjectSession) -> AnytypeObject:
             body_parts.append(f"- [{url}]({url})\n")
 
     if rule_descriptions:
-        body_parts.append(f"\n## ルール\n\n")
+        body_parts.append("\n## ルール\n\n")
         for rule in rule_descriptions:
             body_parts.append(f"- {rule}\n")
 
     if session.forbidden_rules:
-        body_parts.append(f"\n## 禁止ルール\n\n")
+        body_parts.append("\n## 禁止ルール\n\n")
         for rule in session.forbidden_rules:
             body_parts.append(f"- {rule}\n")
 
     if session.recommended_rules:
-        body_parts.append(f"\n## 推奨ルール\n\n")
+        body_parts.append("\n## 推奨ルール\n\n")
         for rule in session.recommended_rules:
             body_parts.append(f"- {rule}\n")
 
     if session.team_total_count is not None:
-        body_parts.append(f"\n## チーム統計\n\n")
+        body_parts.append("\n## チーム統計\n\n")
         body_parts.append(f"- **総チーム数**: {session.team_total_count}\n")
         body_parts.append(f"- **成功チーム数**: {session.team_success_count or 0}\n")
         body_parts.append(f"- **成功率**: {success_rate_percent}\n")
