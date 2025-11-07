@@ -10,10 +10,95 @@
 
 ### 2. 東京キャンパスIDの特定
 
-まず、東京キャンパスの固有ID（`campus_id`）を特定する必要があります。ドキュメントの例から、**東京キャンパスのIDは9**であることが示されていますが、確認が必要です。
+まず、東京キャンパスの固有ID（`campus_id`）を特定する必要があります。APIレスポンスから、**東京キャンパスのIDは26**であることが確認されています。
 
 *   **APIエンドポイント:** `/v2/campus`
-*   **ロジック:** `/v2/campus`を検索するか、`/v2/endpoints/:id`（例：ID 3のエンドポイントが「Tokyo endpoint」を参照している）を参照し、東京の`id`を取得します。（以降、このIDを`[CAMPUS_ID]`と表記します。）
+*   **ロジック:** `/v2/campus`を検索するか、`/v2/endpoints/:id`を参照し、東京の`id`を取得します。（以降、このIDを`[CAMPUS_ID]`と表記します。）
+
+#### curlコマンドでの実行例
+
+**注意:** curlコマンドで`filter[...]`のような角括弧を含むURLパラメータを使用する場合、zshなどのシェルでは角括弧がグロブパターンとして解釈されるため、`-g`オプションでグロブ展開を無効化するか、URLエンコードする必要があります。
+
+```bash
+# 方法1: -gオプションでグロブ展開を無効化（推奨・動作確認済み）
+curl -g -X GET "https://api.intra.42.fr/v2/campus?filter[name]=Tokyo" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 方法2: URLエンコードを使用
+curl -X GET "https://api.intra.42.fr/v2/campus?filter%5Bname%5D=Tokyo" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**実行結果の例:**
+```json
+[{
+  "id": 26,
+  "name": "Tokyo",
+  "time_zone": "Asia/Tokyo",
+  "language": {"id": 13, "name": "Japanese", "identifier": "ja"},
+  "users_count": 6596,
+  ...
+}]
+```
+
+**URLエンコードの対応表:**
+- `[` → `%5B`
+- `]` → `%5D`
+
+### 2.5. カリキュラム（Cursus）IDの特定
+
+42 APIで利用可能なカリキュラムの一覧とIDを取得する方法です。
+
+*   **APIエンドポイント:** `/v2/cursus`
+*   **ロジック:** `/v2/cursus`エンドポイントで全カリキュラムの一覧を取得し、必要なカリキュラムの`id`を確認します。
+
+#### curlコマンドでの実行例
+
+```bash
+# 全カリキュラムの一覧を取得
+curl -g -X GET "https://api.intra.42.fr/v2/cursus" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 特定のカリキュラムを名前で検索（例: "42"）
+curl -g -X GET "https://api.intra.42.fr/v2/cursus?filter[name]=42" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 特定のカリキュラムをスラッグで検索（例: "42cursus"）
+curl -g -X GET "https://api.intra.42.fr/v2/cursus?filter[slug]=42cursus" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**主要なカリキュラムID（実際のAPIレスポンスに基づく）:**
+- **21**: 42cursus（メインカリキュラム、`kind: "main"`）
+- **1**: 42（非推奨、`kind: "main_deprecated"`）
+- **53**: 42.zip（`kind: "main"`）
+- **78**: 42Senior（`kind: "main"`）
+
+**実行結果の例:**
+
+```json
+// filter[slug]=42cursus の結果
+[{
+  "id": 21,
+  "created_at": "2019-07-29T08:45:17.896Z",
+  "name": "42cursus",
+  "slug": "42cursus",
+  "kind": "main"
+}]
+
+// filter[name]=42 の結果
+[{
+  "id": 1,
+  "created_at": "2014-11-02T16:43:38.480Z",
+  "name": "42",
+  "slug": "42",
+  "kind": "main_deprecated"
+}]
+```
+
+**注意:** 
+- カリキュラムIDは環境や時期によって異なる可能性があるため、実際のAPIレスポンスで確認することを推奨します。
+- `kind: "main"`が現在のメインカリキュラムです。`main_deprecated`は非推奨のカリキュラムです。
 
 ### 3. 東京キャンパスに関連するプロジェクトセッションの取得（Available Projects のみ）
 
@@ -71,7 +156,7 @@
 
 東京キャンパスのプロジェクト詳細情報を取得するための推奨フローは、まずプロジェクトセッションを核として情報を集め、次に詳細情報を結合することです。
 
-1.  **東京キャンパスIDの取得:** `/v2/campus` (または既知のID `9`)。
+1.  **東京キャンパスIDの取得:** `/v2/campus` (または既知のID `26`)。
 2.  **プロジェクトセッションのリスト取得:** `/v2/project_sessions?filter[campus_id]=[CAMPUS_ID]`で、利用可能なプロジェクトセッションIDと、内包されるプロジェクト情報（名前、説明、開始/終了日、チーム人数、評価回数）を取得します。
 3.  **付加情報の取得（ループ処理）:**
     *   各プロジェクトセッションIDを使用して、**スキル**情報(`/v2/project_sessions/:id/project_sessions_skills`)を取得します。
