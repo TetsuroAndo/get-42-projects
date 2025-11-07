@@ -248,7 +248,7 @@ class ProjectSessionSyncer:
                             self.cache.delete(session.id)
                             self.logger.debug(f"キャッシュ削除: session_id={session.id}")
                         except Exception as e:
-                            self.logger.warning(f"キャッシュ削除エラー (session_id={batch_sessions[idx].id}): {e}")
+                            self.logger.warning(f"キャッシュ削除エラー (session_id={session.id}): {e}")
 
                 self.logger.info(f"  {success_count}/{len(objects)} 件を追加しました")
                 if batch_error_indices:
@@ -297,7 +297,7 @@ class ProjectSessionSyncer:
                         self.cache.delete(session.id)
                         self.logger.debug(f"キャッシュ削除: session_id={session.id}")
                     except Exception as e:
-                        self.logger.warning(f"キャッシュ削除エラー (session_id={sessions[obj_idx].id}): {e}")
+                        self.logger.warning(f"キャッシュ削除エラー (session_id={session.id}): {e}")
             except Exception as e:
                 error_count += 1
                 self.logger.error(f"  個別追加エラー (オブジェクト {start_index + obj_idx + 1}, {obj.name}): {e}")
