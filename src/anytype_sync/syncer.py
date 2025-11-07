@@ -108,7 +108,7 @@ class ProjectSessionSyncer:
         Returns:
             プロジェクトセッションのリスト
         """
-        campus_id = campus_id or self.config.fortytwo_campus_id or 9  # 東京キャンパスは9
+        campus_id = campus_id or self.config.fortytwo_campus_id or 26  # 東京キャンパスは26
 
         self.logger.info(f"プロジェクトセッションを取得中... (campus_id={campus_id})")
 

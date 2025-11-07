@@ -7,3 +7,4 @@ from .client import Project42
 __all__ = [
     "Project42",
 ]
+

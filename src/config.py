@@ -15,8 +15,8 @@ class Config:
     # 42 API設定
     fortytwo_client_id: str
     fortytwo_client_secret: str
-    fortytwo_campus_id: Optional[int] = None
-    fortytwo_cursus_id: Optional[int] = 21  # デフォルト: Piscine C
+    fortytwo_campus_id: Optional[int] = 26  # デフォルト: Tokyoキャンパス
+    fortytwo_cursus_id: Optional[int] = 21  # デフォルト: 42cursus
 
     # Anytype API設定
     anytype_api_url: str = "http://localhost:3030"
@@ -53,7 +53,7 @@ class Config:
         return cls(
             fortytwo_client_id=client_id,
             fortytwo_client_secret=client_secret,
-            fortytwo_campus_id=_get_int_env("FORTYTWO_CAMPUS_ID"),
+            fortytwo_campus_id=_get_int_env("FORTYTWO_CAMPUS_ID", default=26),
             fortytwo_cursus_id=_get_int_env("FORTYTWO_CURSUS_ID", default=21),
             anytype_api_url=os.getenv("ANYTYPE_API_URL", "http://localhost:3030"),
             anytype_api_key=os.getenv("ANYTYPE_API_KEY", ""),

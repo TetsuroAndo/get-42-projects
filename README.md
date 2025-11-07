@@ -64,8 +64,8 @@ export FT_SECRET=your_client_secret
 - `ANYTYPE_TABLE_ID`: AnytypeテーブルID
 
 **42 APIフィルター（オプション）:**
-- `FORTYTWO_CAMPUS_ID`: キャンパスID
-- `FORTYTWO_CURSUS_ID`: カリキュラムID（デフォルト: 21）
+- `FORTYTWO_CAMPUS_ID`: キャンパスID（デフォルト: 26 (Tokyoキャンパス)）
+- `FORTYTWO_CURSUS_ID`: カリキュラムID（デフォルト: 21 (42cursus)）
 
 **トークンファイル（オプション）:**
 - `TOKEN_FILE`: トークンファイルのパス（デフォルト: ~/.42_token.json）

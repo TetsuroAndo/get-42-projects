@@ -75,8 +75,8 @@ class Project42:
         """プロジェクト一覧を取得
 
         Args:
-            campus_id: キャンパスID(オプション)
-            cursus_id: カリキュラムID(オプション、デフォルト: 21 (Piscine C))
+            campus_id: キャンパスID(オプション、デフォルト: 26 (Tokyoキャンパス))
+            cursus_id: カリキュラムID(オプション、デフォルト: 21 (42cursus))
             page: ページ番号
             per_page: 1ページあたりの項目数
             **kwargs: その他のフィルター条件
@@ -177,8 +177,8 @@ class Project42:
         """全プロジェクトを取得(ページネーション対応)
 
         Args:
-            campus_id: キャンパスID(オプション)
-            cursus_id: カリキュラムID(オプション)
+            campus_id: キャンパスID(オプション、デフォルト: 26 (Tokyoキャンパス))
+            cursus_id: カリキュラムID(オプション、デフォルト: 21 (42cursus))
             **kwargs: その他のフィルター条件
 
         Returns:
@@ -223,7 +223,7 @@ class Project42:
         ガイドに基づいて、東京キャンパスのカリキュラムプロジェクト情報を取得します。
 
         Args:
-            campus_id: キャンパスID(オプション、東京キャンパスは9)
+            campus_id: キャンパスID(オプション、デフォルト: 26 (Tokyoキャンパス))
             is_subscriptable: 利用可能なプロジェクトのみを取得するか(デフォルト: True)
             page: ページ番号
             per_page: 1ページあたりの項目数
@@ -271,7 +271,7 @@ class Project42:
         """全プロジェクトセッションを取得(ページネーション対応)
 
         Args:
-            campus_id: キャンパスID(オプション、東京キャンパスは9)
+            campus_id: キャンパスID(オプション、デフォルト: 26 (Tokyoキャンパス))
             is_subscriptable: 利用可能なプロジェクトのみを取得するか(デフォルト: True)
             **kwargs: その他のフィルター条件
 
