@@ -30,6 +30,9 @@ class Config:
     batch_size: int = 50
     detail_fetch_interval: int = 10  # 詳細情報取得の進捗表示間隔
 
+    # キャッシュ設定
+    cache_db_path: Optional[Path] = None  # SQLiteキャッシュファイルのパス（Noneの場合はデフォルトパス）
+
     # レート制限・リトライ設定
     max_retries: int = 3  # 最大リトライ回数
     rate_limit_threshold: int = 10  # レート制限残りがこの値以下になったら待機
@@ -64,6 +67,7 @@ class Config:
             rate_limit_threshold=_get_int_env("RATE_LIMIT_THRESHOLD", default=10),
             base_delay=_get_float_env("BASE_DELAY", default=0.5),
             max_delay=_get_float_env("MAX_DELAY", default=60.0),
+            cache_db_path=_get_path_env("CACHE_DB_PATH"),
         )
 
     def validate(self) -> None:
@@ -116,3 +120,8 @@ def _get_float_env(key: str, default: Optional[float] = None) -> Optional[float]
         return float(value)
     except ValueError:
         return default
+
+
+def get_default_cache_path() -> Path:
+    """デフォルトのキャッシュファイルパスを取得"""
+    return Path.home() / ".get_42_projects" / "cache.db"

@@ -554,7 +554,7 @@ class Project42:
         try:
             # 完了したチームのみを取得（with_mark=true）
             params = {"filter[with_mark]": "true"}
-            response = self._make_request_with_retry("GET", url, headers=headers, params=params)
+            response = self.http_client.request("GET", url, headers=headers, params=params)
             response.raise_for_status()
             teams_data = response.json()
 
