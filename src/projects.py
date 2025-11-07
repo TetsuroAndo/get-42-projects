@@ -3,178 +3,25 @@
 42のAPIからプロジェクト情報を取得します。
 """
 from typing import List, Optional, Dict, Any, Tuple
-from dataclasses import dataclass, field
-from datetime import datetime
 import json
+import logging
 import requests
 
 from auth42 import Auth42
-
-
-class Project42Error(Exception):
-    """42プロジェクト取得関連のエラー"""
-    pass
-
-
-@dataclass
-class Project:
-    """42のプロジェクト情報を保持するデータクラス"""
-    id: int
-    name: str
-    slug: str
-    description: Optional[str] = None
-    tier: Optional[int] = None
-    difficulty: Optional[int] = None
-    duration: Optional[str] = None
-    objectives: List[str] = field(default_factory=list)
-    attachments: List[Dict[str, Any]] = field(default_factory=list)
-    tags: List[str] = field(default_factory=list)
-    exam: bool = False
-    repository: Optional[str] = None
-    parent_id: Optional[int] = None
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-    @classmethod
-    def from_api_response(cls, data: Dict[str, Any]) -> "Project":
-        """APIレスポンスからProjectオブジェクトを作成"""
-        return cls(
-            id=data.get("id"),
-            name=data.get("name", ""),
-            slug=data.get("slug", ""),
-            description=data.get("description"),
-            tier=data.get("tier"),
-            difficulty=data.get("difficulty"),
-            duration=data.get("duration"),
-            objectives=[obj.get("name", "") for obj in data.get("objectives", [])],
-            attachments=data.get("attachments", []),
-            tags=[tag.get("name", "") for tag in data.get("tags", [])],
-            exam=data.get("exam", False),
-            repository=data.get("repository"),
-            parent_id=data.get("parent_id"),
-            created_at=data.get("created_at"),
-            updated_at=data.get("updated_at"),
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        """辞書形式に変換"""
-        return {
-            "id": self.id,
-            "name": self.name,
-            "slug": self.slug,
-            "description": self.description,
-            "tier": self.tier,
-            "difficulty": self.difficulty,
-            "duration": self.duration,
-            "objectives": self.objectives,
-            "tags": self.tags,
-            "exam": self.exam,
-            "repository": self.repository,
-            "parent_id": self.parent_id,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
-        }
-
-
-@dataclass
-class ProjectSession:
-    """42のプロジェクトセッション情報を保持するデータクラス
-
-    ガイドに基づいて、東京キャンパスのカリキュラムプロジェクト情報を
-    取得するために必要な全てのフィールドを含みます。
-    """
-    id: int
-    project_id: int
-    project_name: str
-    project_slug: str
-    description: Optional[str] = None
-    xp: Optional[int] = None  # difficultyから取得
-    creation_date: Optional[str] = None  # created_at
-    cursus_id: Optional[int] = None
-    cursus_name: Optional[str] = None
-    cursus_slug: Optional[str] = None
-    max_people: Optional[int] = None
-    solo: Optional[bool] = None
-    correction_number: Optional[int] = None  # 評価の回数
-    keywords: List[str] = field(default_factory=list)  # tags
-    skills: List[Dict[str, Any]] = field(default_factory=list)
-    attachments: List[Dict[str, Any]] = field(default_factory=list)
-    is_subscriptable: Optional[bool] = None
-    begin_at: Optional[str] = None
-    end_at: Optional[str] = None
-    rules: List[Dict[str, Any]] = field(default_factory=list)  # ルール情報
-    status: Optional[str] = None  # 進行ステータス
-    forbidden_rules: List[str] = field(default_factory=list)  # 禁止条件
-    recommended_rules: List[str] = field(default_factory=list)  # 推奨条件
-    team_total_count: Optional[int] = None  # チーム総数
-    team_success_count: Optional[int] = None  # 成功チーム数
-    team_success_rate: Optional[float] = None  # 成功率（0.0-1.0）
-
-    @classmethod
-    def from_api_response(cls, data: Dict[str, Any]) -> "ProjectSession":
-        """APIレスポンスからProjectSessionオブジェクトを作成"""
-        project = data.get("project", {})
-        cursus = data.get("cursus", {})
-
-        return cls(
-            id=data.get("id"),
-            project_id=project.get("id") if project else None,
-            project_name=project.get("name", ""),
-            project_slug=project.get("slug", ""),
-            description=project.get("description"),
-            xp=project.get("difficulty"),  # difficultyがXP/難易度を示す
-            creation_date=data.get("created_at"),
-            cursus_id=cursus.get("id") if cursus else None,
-            cursus_name=cursus.get("name") if cursus else None,
-            cursus_slug=cursus.get("slug") if cursus else None,
-            max_people=data.get("max_people"),
-            solo=data.get("solo"),
-            correction_number=None,  # 後で取得
-            keywords=[tag.get("name", "") for tag in project.get("tags", [])],
-            skills=[],  # 後で取得
-            attachments=[],  # 後で取得
-            is_subscriptable=data.get("is_subscriptable"),
-            begin_at=data.get("begin_at"),
-            end_at=data.get("end_at"),
-            rules=[],  # 後で取得
-            status=data.get("status"),  # 進行ステータス
-            forbidden_rules=[],  # 後で取得
-            recommended_rules=[],  # 後で取得
-            team_total_count=None,  # 後で取得
-            team_success_count=None,  # 後で取得
-            team_success_rate=None,  # 後で取得
-        )
-
-    def to_dict(self) -> Dict[str, Any]:
-        """辞書形式に変換"""
-        return {
-            "id": self.id,
-            "project_id": self.project_id,
-            "project_name": self.project_name,
-            "project_slug": self.project_slug,
-            "description": self.description,
-            "xp": self.xp,
-            "creation_date": self.creation_date,
-            "cursus_id": self.cursus_id,
-            "cursus_name": self.cursus_name,
-            "cursus_slug": self.cursus_slug,
-            "max_people": self.max_people,
-            "solo": self.solo,
-            "correction_number": self.correction_number,
-            "keywords": self.keywords,
-            "skills": self.skills,
-            "attachments": self.attachments,
-            "is_subscriptable": self.is_subscriptable,
-            "begin_at": self.begin_at,
-            "end_at": self.end_at,
-            "rules": self.rules,
-            "status": self.status,
-            "forbidden_rules": self.forbidden_rules,
-            "recommended_rules": self.recommended_rules,
-            "team_total_count": self.team_total_count,
-            "team_success_count": self.team_success_count,
-            "team_success_rate": self.team_success_rate,
-        }
+from auth42.exceptions import AuthenticationError, AuthorizationError
+from src.config import Config
+from src.exceptions import (
+    Project42Error,
+    APIError,
+    NotFoundError,
+    NetworkError,
+    ConnectionError,
+    ValidationError,
+    ParseError,
+)
+from src.payloads import Project, ProjectSession
+from src.rate_limiter import RateLimiter
+from src.http_client import HTTPClient
 
 
 class Project42:
@@ -182,13 +29,38 @@ class Project42:
 
     BASE_URL = "https://api.intra.42.fr"
 
-    def __init__(self, auth: Auth42):
+    def __init__(self, auth: Auth42, logger: Optional[logging.Logger] = None, config: Optional[Config] = None):
         """プロジェクト取得クラスの初期化
 
         Args:
             auth: 42認証オブジェクト
+            logger: ロガー（オプション）
+            config: 設定オブジェクト（オプション）
         """
         self.auth = auth
+        self.logger = logger or logging.getLogger(__name__)
+        self.config = config
+
+        # デフォルト設定値
+        max_retries = config.max_retries if config else 3
+        rate_limit_threshold = config.rate_limit_threshold if config else 10
+        base_delay = config.base_delay if config else 0.5
+        max_delay = config.max_delay if config else 60.0
+
+        # レート制限管理とHTTPクライアントを初期化
+        self.rate_limiter = RateLimiter(
+            threshold=rate_limit_threshold,
+            base_delay=base_delay,
+            logger=self.logger
+        )
+        self.http_client = HTTPClient(
+            rate_limiter=self.rate_limiter,
+            max_retries=max_retries,
+            base_delay=base_delay,
+            max_delay=max_delay,
+            logger=self.logger
+        )
+
 
     def get_projects(
         self,
@@ -231,45 +103,54 @@ class Project42:
         headers = self.auth.get_headers()
 
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = self.http_client.request("GET", url, headers=headers, params=params)
 
             # エラーハンドリング
             if response.status_code == 400:
-                raise Project42Error(
-                    f"リクエストの形式が不正です: {response.text}\n"
-                    "パラメータを確認してください。"
+                raise ValidationError(
+                    "リクエストの形式が不正です。パラメータを確認してください",
+                    response_text=response.text
                 )
             elif response.status_code == 401:
-                raise Project42Error(
-                    f"認証に失敗しました: {response.text}\n"
-                    "トークンが無効です。再認証を試みてください。"
+                raise AuthenticationError(
+                    f"認証に失敗しました。トークンが無効です。再認証を試みてください。レスポンス: {response.text}",
+                    status_code=401
                 )
             elif response.status_code == 403:
-                raise Project42Error(
-                    f"アクセスが拒否されました: {response.text}\n"
-                    "必要なロールやスコープが不足している可能性があります。"
+                raise AuthorizationError(
+                    f"アクセスが拒否されました。必要なロールやスコープが不足している可能性があります。レスポンス: {response.text}",
+                    status_code=403
                 )
             elif response.status_code == 404:
-                raise Project42Error(
-                    f"リソースが見つかりませんでした: {response.text}"
+                raise NotFoundError(
+                    "リソースが見つかりませんでした",
+                    response_text=response.text
                 )
             elif not response.ok:
-                raise Project42Error(
-                    f"プロジェクト取得に失敗しました (HTTP {response.status_code}): {response.text}"
+                raise APIError(
+                    f"プロジェクト取得に失敗しました (HTTP {response.status_code})",
+                    status_code=response.status_code,
+                    response_text=response.text
                 )
 
             projects_data = response.json()
             return [Project.from_api_response(project) for project in projects_data]
 
         except requests.exceptions.ConnectionError as e:
-            raise Project42Error(
-                f"APIへの接続に失敗しました: {e}\n"
-                "HTTPSを使用しているか確認してください。"
+            raise ConnectionError(
+                "APIへの接続に失敗しました。HTTPSを使用しているか確認してください",
+                original_error=e
             ) from e
         except requests.exceptions.RequestException as e:
-            raise Project42Error(f"リクエスト中にエラーが発生しました: {e}") from e
+            raise NetworkError(
+                "リクエスト中にエラーが発生しました",
+                original_error=e
+            ) from e
         except (json.JSONDecodeError, KeyError, TypeError) as e:
-            raise Project42Error(f"レスポンスの解析に失敗しました: {e}") from e
+            raise ParseError(
+                "レスポンスの解析に失敗しました",
+                original_error=e
+            ) from e
 
     def get_project_by_id(self, project_id: int) -> Project:
         """プロジェクトIDでプロジェクトを取得
@@ -284,39 +165,49 @@ class Project42:
         headers = self.auth.get_headers()
 
         try:
-            response = requests.get(url, headers=headers)
+            response = self.http_client.request("GET", url, headers=headers)
 
             if response.status_code == 401:
-                raise Project42Error(
-                    f"認証に失敗しました: {response.text}\n"
-                    "トークンが無効です。再認証を試みてください。"
+                raise AuthenticationError(
+                    "認証に失敗しました。トークンが無効です。再認証を試みてください",
+                    response_text=response.text
                 )
             elif response.status_code == 403:
-                raise Project42Error(
-                    f"アクセスが拒否されました: {response.text}\n"
-                    "必要なロールやスコープが不足している可能性があります。"
+                raise AuthorizationError(
+                    "アクセスが拒否されました。必要なロールやスコープが不足している可能性があります",
+                    response_text=response.text
                 )
             elif response.status_code == 404:
-                raise Project42Error(
-                    f"プロジェクトID {project_id} が見つかりませんでした: {response.text}"
+                raise NotFoundError(
+                    "プロジェクトが見つかりませんでした",
+                    resource_id=str(project_id),
+                    response_text=response.text
                 )
             elif not response.ok:
-                raise Project42Error(
-                    f"プロジェクト取得に失敗しました (HTTP {response.status_code}): {response.text}"
+                raise APIError(
+                    f"プロジェクト取得に失敗しました (HTTP {response.status_code})",
+                    status_code=response.status_code,
+                    response_text=response.text
                 )
 
             project_data = response.json()
             return Project.from_api_response(project_data)
 
         except requests.exceptions.ConnectionError as e:
-            raise Project42Error(
-                f"APIへの接続に失敗しました: {e}\n"
-                "HTTPSを使用しているか確認してください。"
+            raise ConnectionError(
+                "APIへの接続に失敗しました。HTTPSを使用しているか確認してください",
+                original_error=e
             ) from e
         except requests.exceptions.RequestException as e:
-            raise Project42Error(f"リクエスト中にエラーが発生しました: {e}") from e
+            raise NetworkError(
+                "リクエスト中にエラーが発生しました",
+                original_error=e
+            ) from e
         except (json.JSONDecodeError, KeyError, TypeError) as e:
-            raise Project42Error(f"レスポンスの解析に失敗しました: {e}") from e
+            raise ParseError(
+                "レスポンスの解析に失敗しました",
+                original_error=e
+            ) from e
 
     def get_project_by_slug(self, slug: str) -> Project:
         """プロジェクトスラッグでプロジェクトを取得
@@ -331,39 +222,49 @@ class Project42:
         headers = self.auth.get_headers()
 
         try:
-            response = requests.get(url, headers=headers)
+            response = self.http_client.request("GET", url, headers=headers)
 
             if response.status_code == 401:
-                raise Project42Error(
-                    f"認証に失敗しました: {response.text}\n"
-                    "トークンが無効です。再認証を試みてください。"
+                raise AuthenticationError(
+                    "認証に失敗しました。トークンが無効です。再認証を試みてください",
+                    response_text=response.text
                 )
             elif response.status_code == 403:
-                raise Project42Error(
-                    f"アクセスが拒否されました: {response.text}\n"
-                    "必要なロールやスコープが不足している可能性があります。"
+                raise AuthorizationError(
+                    "アクセスが拒否されました。必要なロールやスコープが不足している可能性があります",
+                    response_text=response.text
                 )
             elif response.status_code == 404:
-                raise Project42Error(
-                    f"プロジェクトスラッグ '{slug}' が見つかりませんでした: {response.text}"
+                raise NotFoundError(
+                    "プロジェクトが見つかりませんでした",
+                    resource_id=slug,
+                    response_text=response.text
                 )
             elif not response.ok:
-                raise Project42Error(
-                    f"プロジェクト取得に失敗しました (HTTP {response.status_code}): {response.text}"
+                raise APIError(
+                    f"プロジェクト取得に失敗しました (HTTP {response.status_code})",
+                    status_code=response.status_code,
+                    response_text=response.text
                 )
 
             project_data = response.json()
             return Project.from_api_response(project_data)
 
         except requests.exceptions.ConnectionError as e:
-            raise Project42Error(
-                f"APIへの接続に失敗しました: {e}\n"
-                "HTTPSを使用しているか確認してください。"
+            raise ConnectionError(
+                "APIへの接続に失敗しました。HTTPSを使用しているか確認してください",
+                original_error=e
             ) from e
         except requests.exceptions.RequestException as e:
-            raise Project42Error(f"リクエスト中にエラーが発生しました: {e}") from e
+            raise NetworkError(
+                "リクエスト中にエラーが発生しました",
+                original_error=e
+            ) from e
         except (json.JSONDecodeError, KeyError, TypeError) as e:
-            raise Project42Error(f"レスポンスの解析に失敗しました: {e}") from e
+            raise ParseError(
+                "レスポンスの解析に失敗しました",
+                original_error=e
+            ) from e
 
     def get_all_projects(
         self,
@@ -450,45 +351,44 @@ class Project42:
         headers = self.auth.get_headers()
 
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = self.http_client.request("GET", url, params=params, headers=headers)
 
             # エラーハンドリング
             if response.status_code == 400:
-                raise Project42Error(
-                    f"リクエストの形式が不正です: {response.text}\n"
-                    "パラメータを確認してください。"
+                raise ValidationError(
+                    "リクエストの形式が不正です。パラメータを確認してください",
+                    response_text=response.text
                 )
             elif response.status_code == 401:
-                raise Project42Error(
-                    f"認証に失敗しました: {response.text}\n"
-                    "トークンが無効です。再認証を試みてください。"
+                raise AuthenticationError(
+                    f"認証に失敗しました。トークンが無効です。再認証を試みてください。レスポンス: {response.text}",
+                    status_code=401
                 )
             elif response.status_code == 403:
-                raise Project42Error(
-                    f"アクセスが拒否されました: {response.text}\n"
-                    "必要なロールやスコープが不足している可能性があります。"
+                raise AuthorizationError(
+                    f"アクセスが拒否されました。必要なロールやスコープが不足している可能性があります。レスポンス: {response.text}",
+                    status_code=403
                 )
             elif response.status_code == 404:
-                raise Project42Error(
-                    f"リソースが見つかりませんでした: {response.text}"
+                raise NotFoundError(
+                    "リソースが見つかりませんでした",
+                    response_text=response.text
                 )
             elif not response.ok:
-                raise Project42Error(
-                    f"プロジェクトセッション取得に失敗しました (HTTP {response.status_code}): {response.text}"
+                raise APIError(
+                    f"プロジェクトセッション取得に失敗しました (HTTP {response.status_code})",
+                    status_code=response.status_code,
+                    response_text=response.text
                 )
 
             sessions_data = response.json()
             return [ProjectSession.from_api_response(session) for session in sessions_data]
 
-        except requests.exceptions.ConnectionError as e:
-            raise Project42Error(
-                f"APIへの接続に失敗しました: {e}\n"
-                "HTTPSを使用しているか確認してください。"
-            ) from e
-        except requests.exceptions.RequestException as e:
-            raise Project42Error(f"リクエスト中にエラーが発生しました: {e}") from e
         except (json.JSONDecodeError, KeyError, TypeError) as e:
-            raise Project42Error(f"レスポンスの解析に失敗しました: {e}") from e
+            raise ParseError(
+                "レスポンスの解析に失敗しました",
+                original_error=e
+            ) from e
 
     def get_all_project_sessions(
         self,
@@ -510,7 +410,10 @@ class Project42:
         page = 1
         per_page = 100
 
+        self.logger.info(f"全プロジェクトセッション取得開始 (campus_id={campus_id}, is_subscriptable={is_subscriptable})")
+
         while True:
+            self.logger.info(f"  ページ {page} を取得中...")
             sessions = self.get_project_sessions(
                 campus_id=campus_id,
                 is_subscriptable=is_subscriptable,
@@ -520,9 +423,11 @@ class Project42:
             )
 
             if not sessions:
+                self.logger.info(f"  ページ {page}: データなし")
                 break
 
             all_sessions.extend(sessions)
+            self.logger.info(f"  ページ {page}: {len(sessions)}件取得")
 
             # レスポンスがper_page未満なら最後のページ
             if len(sessions) < per_page:
@@ -530,6 +435,7 @@ class Project42:
 
             page += 1
 
+        self.logger.info(f"全プロジェクトセッション取得完了: 合計 {len(all_sessions)}件")
         return all_sessions
 
     def get_project_session_skills(self, project_session_id: int) -> List[Dict[str, Any]]:
@@ -545,11 +451,15 @@ class Project42:
         headers = self.auth.get_headers()
 
         try:
-            response = requests.get(url, headers=headers)
+            response = self.http_client.request("GET", url, headers=headers)
             response.raise_for_status()
             return response.json()
+        except Project42Error:
+            # Project42Errorはそのまま再スロー
+            raise
         except requests.exceptions.RequestException as e:
             # エラー時は空リストを返す（ログに記録はしない）
+            self.logger.debug(f"スキル情報取得エラー (session_id={project_session_id}): {e}")
             return []
 
     def get_project_session_attachments(self, project_session_id: int) -> List[Dict[str, Any]]:
@@ -565,11 +475,15 @@ class Project42:
         headers = self.auth.get_headers()
 
         try:
-            response = requests.get(url, headers=headers)
+            response = self.http_client.request("GET", url, headers=headers)
             response.raise_for_status()
             return response.json()
+        except Project42Error:
+            # Project42Errorはそのまま再スロー
+            raise
         except requests.exceptions.RequestException as e:
             # エラー時は空リストを返す（ログに記録はしない）
+            self.logger.debug(f"添付ファイル情報取得エラー (session_id={project_session_id}): {e}")
             return []
 
     def get_project_session_rules(self, project_session_id: int) -> List[Dict[str, Any]]:
@@ -585,7 +499,7 @@ class Project42:
         headers = self.auth.get_headers()
 
         try:
-            response = requests.get(url, headers=headers)
+            response = self.http_client.request("GET", url, headers=headers)
             response.raise_for_status()
             rules_data = response.json()
 
@@ -596,7 +510,7 @@ class Project42:
                 if rule_id:
                     try:
                         rule_url = f"{self.BASE_URL}/v2/rules/{rule_id}"
-                        rule_response = requests.get(rule_url, headers=headers)
+                        rule_response = self.http_client.request("GET", rule_url, headers=headers)
                         rule_response.raise_for_status()
                         rule_detail = rule_response.json()
                         detailed_rules.append({
@@ -606,16 +520,21 @@ class Project42:
                             "name": rule_detail.get("name"),
                             "description": rule_detail.get("description"),
                         })
-                    except requests.exceptions.RequestException:
+                    except (Project42Error, requests.exceptions.RequestException) as e:
                         # 詳細取得失敗時は基本情報のみ
+                        self.logger.debug(f"ルール詳細取得エラー (rule_id={rule_id}): {e}")
                         detailed_rules.append({
                             "rule_id": rule_id,
                             "required": rule_item.get("required"),
                         })
 
             return detailed_rules
+        except Project42Error:
+            # Project42Errorはそのまま再スロー
+            raise
         except requests.exceptions.RequestException as e:
             # エラー時は空リストを返す（ログに記録はしない）
+            self.logger.debug(f"ルール情報取得エラー (session_id={project_session_id}): {e}")
             return []
 
     def get_project_session_teams(self, project_session_id: int) -> Dict[str, Any]:
@@ -635,7 +554,7 @@ class Project42:
         try:
             # 完了したチームのみを取得（with_mark=true）
             params = {"filter[with_mark]": "true"}
-            response = requests.get(url, headers=headers, params=params)
+            response = self._make_request_with_retry("GET", url, headers=headers, params=params)
             response.raise_for_status()
             teams_data = response.json()
 
@@ -659,8 +578,12 @@ class Project42:
                 "success_count": success_count,
                 "success_rate": success_rate,
             }
-        except requests.exceptions.RequestException:
+        except Project42Error:
+            # Project42Errorはそのまま再スロー
+            raise
+        except requests.exceptions.RequestException as e:
             # エラー時はデフォルト値を返す
+            self.logger.debug(f"チーム統計情報取得エラー (session_id={project_session_id}): {e}")
             return {
                 "total_count": 0,
                 "success_count": 0,
@@ -734,7 +657,7 @@ class Project42:
         try:
             evaluations_url = f"{self.BASE_URL}/v2/project_sessions/{session.id}/evaluations"
             headers = self.auth.get_headers()
-            response = requests.get(evaluations_url, headers=headers)
+            response = self.http_client.request("GET", evaluations_url, headers=headers)
             if response.ok:
                 evaluations = response.json()
                 # kindがscaleの場合、correction_numberを取得
@@ -744,7 +667,7 @@ class Project42:
                         if scale_id:
                             try:
                                 scale_url = f"{self.BASE_URL}/v2/scales/{scale_id}"
-                                scale_response = requests.get(scale_url, headers=headers)
+                                scale_response = self.http_client.request("GET", scale_url, headers=headers)
                                 if scale_response.ok:
                                     scale_data = scale_response.json()
                                     session.correction_number = scale_data.get("correction_number")
