@@ -106,7 +106,7 @@ class Project42:
 
         try:
             response = self.http_client.request("GET", url, headers=headers, params=params)
-            APIResponseHandler.handle_response(response, error_message_prefix="プロジェクト取得")
+            APIResponseHandler.handle_response(response, error_message_prefix="プロジェクト取得", logger=self.logger)
             projects_data = response.json()
             return [Project.from_api_response(project) for project in projects_data]
         except (ValidationError, AuthenticationError, AuthorizationError, NotFoundError, APIError):
@@ -131,7 +131,8 @@ class Project42:
             APIResponseHandler.handle_response(
                 response,
                 error_message_prefix="プロジェクト取得",
-                resource_id=str(project_id)
+                resource_id=str(project_id),
+                logger=self.logger
             )
             project_data = response.json()
             return Project.from_api_response(project_data)
@@ -157,7 +158,8 @@ class Project42:
             APIResponseHandler.handle_response(
                 response,
                 error_message_prefix="プロジェクト取得",
-                resource_id=slug
+                resource_id=slug,
+                logger=self.logger
             )
             project_data = response.json()
             return Project.from_api_response(project_data)
@@ -252,7 +254,7 @@ class Project42:
 
         try:
             response = self.http_client.request("GET", url, params=params, headers=headers)
-            APIResponseHandler.handle_response(response, error_message_prefix="プロジェクトセッション取得")
+            APIResponseHandler.handle_response(response, error_message_prefix="プロジェクトセッション取得", logger=self.logger)
             sessions_data = response.json()
             return [ProjectSession.from_api_response(session) for session in sessions_data]
         except (ValidationError, AuthenticationError, AuthorizationError, NotFoundError, APIError):

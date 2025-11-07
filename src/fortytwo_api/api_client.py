@@ -3,6 +3,7 @@
 42のAPIリクエストにおける共通のエラーハンドリング処理を提供します。
 """
 import json
+import logging
 import requests
 from typing import Optional
 from src.exceptions import (
@@ -23,7 +24,8 @@ class APIResponseHandler:
     def handle_response(
         response: requests.Response,
         error_message_prefix: str = "APIリクエスト",
-        resource_id: Optional[str] = None
+        resource_id: Optional[str] = None,
+        logger: Optional[logging.Logger] = None
     ) -> None:
         """APIレスポンスのエラーハンドリング共通処理
 
@@ -31,6 +33,7 @@ class APIResponseHandler:
             response: HTTPレスポンス
             error_message_prefix: エラーメッセージのプレフィックス
             resource_id: リソースID（404エラー時に使用）
+            logger: ロガー（オプション、デバッグ用にresponse_textをログに記録）
 
         Raises:
             ValidationError: 400エラーの場合
@@ -39,6 +42,12 @@ class APIResponseHandler:
             NotFoundError: 404エラーの場合
             APIError: その他のエラーの場合
         """
+        # デバッグ用にresponse_textをログに記録（機密情報が含まれる可能性があるためDEBUGレベル）
+        if logger and not response.ok and response.text:
+            logger.debug(
+                f"APIエラーレスポンス (HTTP {response.status_code}): {response.text[:500]}"
+            )
+
         if response.status_code == 400:
             raise ValidationError(
                 f"{error_message_prefix}の形式が不正です。パラメータを確認してください",
@@ -46,12 +55,12 @@ class APIResponseHandler:
             )
         elif response.status_code == 401:
             raise Auth42AuthenticationError(
-                f"認証に失敗しました。トークンが無効です。再認証を試みてください。レスポンス: {response.text}",
+                "認証に失敗しました。トークンが無効です。再認証を試みてください。",
                 status_code=401
             )
         elif response.status_code == 403:
             raise Auth42AuthorizationError(
-                f"アクセスが拒否されました。必要なロールやスコープが不足している可能性があります。レスポンス: {response.text}",
+                "アクセスが拒否されました。必要なロールやスコープが不足している可能性があります。",
                 status_code=403
             )
         elif response.status_code == 404:
