@@ -95,14 +95,69 @@ class BatchProcessor:
                 self.logger.error(
                     f"  バッチ追加エラー ({i+1}-{min(i+self.batch_size, len(objects))}件): {e}"
                 )
-                # create_objectsが例外を投げた場合、実際の作成結果が不明なため
-                # キャッシュの状態に依存せず、すべてのオブジェクトを個別に再試行する
-                # キャッシュの欠落は、キャッシュの失敗、破損、またはセッションが
-                # 最初からキャッシュされていないことを示している可能性があるため、
-                # 成功の証拠として使用できない
-                success, errors = self._save_individually(batch, i, batch_sessions)
-                success_count += success
-                error_count += errors
+                # create_objectsが例外を投げた場合、部分的に成功している可能性がある
+                # キャッシュをチェックして、既に作成済みの可能性があるオブジェクトを特定する
+                # ただし、キャッシュの欠落は成功の証拠ではないため、成功としてカウントしない
+                # キャッシュに存在しないオブジェクトは再試行をスキップするが、
+                # 重複エラーが発生する可能性があるため、すべてを再試行する方が安全
+                if batch_sessions:
+                    # キャッシュの状態を確認して、既に作成済みの可能性があるオブジェクトを記録
+                    potentially_created = []
+                    for obj_idx, (obj, session) in enumerate(zip(batch, batch_sessions)):
+                        cached_session = self.cache_manager.get_session(session.id)
+                        if cached_session is None:
+                            potentially_created.append((obj_idx, obj.name))
+
+                    if potentially_created:
+                        self.logger.warning(
+                            f"  バッチ内の {len(potentially_created)}件のオブジェクトは"
+                            f" キャッシュに存在しません（既に作成済みの可能性があります）"
+                        )
+                        # キャッシュに存在しないオブジェクトをスキップして再試行を避ける
+                        # これにより重複作成を防ぐ
+                        retry_objects = []
+                        retry_sessions = []
+                        skipped_count = 0
+
+                        for obj_idx, (obj, session) in enumerate(zip(batch, batch_sessions)):
+                            cached_session = self.cache_manager.get_session(session.id)
+                            if cached_session is None:
+                                # キャッシュに存在しない場合はスキップ
+                                # 成功としてカウントしない（キャッシュの欠落は成功の証拠ではない）
+                                skipped_count += 1
+                                self.logger.debug(
+                                    f"  オブジェクト {i + obj_idx + 1} ({obj.name}) をスキップ"
+                                    f" (キャッシュに存在しない)"
+                                )
+                            else:
+                                retry_objects.append(obj)
+                                retry_sessions.append(session)
+
+                        if skipped_count > 0:
+                            self.logger.info(
+                                f"  {skipped_count}件のオブジェクトをスキップしました"
+                                f"（キャッシュに存在しないため、既に作成済みの可能性があります）"
+                            )
+
+                        # キャッシュに残っているオブジェクトのみを再試行
+                        if retry_objects:
+                            success, errors = self._save_individually(
+                                retry_objects, i, retry_sessions
+                            )
+                            success_count += success
+                            error_count += errors
+                        else:
+                            self.logger.info("  再試行が必要なオブジェクトはありません")
+                    else:
+                        # すべてのオブジェクトがキャッシュに存在する場合は、すべてを再試行
+                        success, errors = self._save_individually(batch, i, batch_sessions)
+                        success_count += success
+                        error_count += errors
+                else:
+                    # sessionsが提供されていない場合は、全てを再試行
+                    success, errors = self._save_individually(batch, i, batch_sessions)
+                    success_count += success
+                    error_count += errors
 
         return success_count, error_count
 
