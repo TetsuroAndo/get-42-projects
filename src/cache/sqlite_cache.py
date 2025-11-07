@@ -63,7 +63,11 @@ class SQLiteCache(CacheBase):
         """
         try:
             data_json = json.dumps(session.to_dict(), ensure_ascii=False)
-            now = datetime.utcnow().isoformat()
+from datetime import datetime, timezone
+
+...
+
+            now = datetime.now(timezone.utc).isoformat()
 
             with self._get_connection() as conn:
                 # 既存のレコードがあるかチェック
