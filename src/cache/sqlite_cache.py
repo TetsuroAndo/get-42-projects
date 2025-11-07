@@ -7,7 +7,7 @@ import sqlite3
 import logging
 from pathlib import Path
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.cache.base import CacheBase
 from src.payloads import ProjectSession
@@ -63,7 +63,7 @@ class SQLiteCache(CacheBase):
         """
         try:
             data_json = json.dumps(session.to_dict(), ensure_ascii=False)
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
 
             with self._get_connection() as conn:
                 # 既存のレコードがあるかチェック
@@ -151,7 +151,7 @@ class SQLiteCache(CacheBase):
             session_id: プロジェクトセッションID
         """
         try:
-            now = datetime.utcnow().isoformat()
+            now = datetime.now(timezone.utc).isoformat()
             with self._get_connection() as conn:
                 conn.execute("""
                     UPDATE cache
