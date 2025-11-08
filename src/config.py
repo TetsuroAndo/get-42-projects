@@ -26,7 +26,7 @@ class Config:
 
     # その他設定
     token_file: Optional[Path] = None
-    log_file: str = "get_42_projects.log"
+    log_file: str = "logs/get_42_projects.log"
     batch_size: int = 50
     detail_fetch_interval: int = 10  # 詳細情報取得の進捗表示間隔
 
@@ -60,7 +60,7 @@ class Config:
             anytype_space_id=os.getenv("ANYTYPE_SPACE_ID", ""),
             anytype_objects_id=os.getenv("ANYTYPE_OBJECTS_ID"),
             token_file=_get_path_env("TOKEN_FILE"),
-            log_file=os.getenv("LOG_FILE", "get_42_projects.log"),
+            log_file=os.getenv("LOG_FILE", "logs/get_42_projects.log"),
             batch_size=_get_int_env("BATCH_SIZE", default=50),
             detail_fetch_interval=_get_int_env("DETAIL_FETCH_INTERVAL", default=10),
             max_retries=_get_int_env("MAX_RETRIES", default=3),
