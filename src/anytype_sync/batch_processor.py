@@ -36,6 +36,133 @@ class BatchProcessor:
         self.batch_size = batch_size
         self.logger = logger
 
+    def create_objects(
+        self,
+        objects: List[AnytypeObject],
+        sessions: List[ProjectSession],
+    ) -> Tuple[int, int]:
+        """Anytypeにオブジェクトを新規作成（Syncフェーズ: 新規）
+
+        Args:
+            objects: 作成するオブジェクトのリスト
+            sessions: 対応するプロジェクトセッションのリスト
+
+        Returns:
+            (成功数, エラー数) のタプル
+        """
+        self._validate_object_session_alignment(objects, sessions)
+
+        self.logger.info(f"新規作成: {len(objects)}件のオブジェクトをAnytypeに作成します")
+        success_count = 0
+        error_count = 0
+
+        for i in range(0, len(objects), self.batch_size):
+            batch = objects[i:i + self.batch_size]
+            batch_sessions = sessions[i:i + self.batch_size]
+
+            try:
+                results = self.object_manager.create_objects(batch)
+                # エラーがないかチェック
+                batch_success_indices = []
+                batch_error_indices = []
+                for idx, r in enumerate(results):
+                    if "error" not in r:
+                        batch_success_indices.append(idx)
+                    else:
+                        batch_error_indices.append(idx)
+
+                # 成功したオブジェクトのanytype_object_idをキャッシュに保存
+                for idx in batch_success_indices:
+                    session = batch_sessions[idx]
+                    result = results[idx]
+                    # APIレスポンスからobject_idを取得
+                    anytype_object_id = result.get("id") or result.get("object_id")
+                    if anytype_object_id:
+                        # キャッシュにanytype_object_idを保存
+                        self.cache_manager.save_session(session, anytype_object_id)
+                        self.logger.debug(
+                            f"anytype_object_idをキャッシュに保存: "
+                            f"session_id={session.id}, object_id={anytype_object_id}"
+                        )
+                    else:
+                        self.logger.warning(
+                            f"APIレスポンスにobject_idが含まれていません: session_id={session.id}"
+                        )
+
+                success_count += len(batch_success_indices)
+                error_count += len(batch_error_indices)
+
+                # 成功したセッションはanytype_object_idを保存した時点でstatus='sent'になっているため、
+                # キャッシュを削除する必要はない（次回のDiffフェーズで比較に使用するため保持）
+
+                self.logger.info(f"  新規作成進捗: {success_count}/{len(objects)} 件")
+                if batch_error_indices:
+                    self.logger.warning(f"  {len(batch_error_indices)}件のオブジェクトでエラーが発生しました")
+                    # エラーが発生したオブジェクトのみを個別に再試行
+                    error_objects = [batch[idx] for idx in batch_error_indices]
+                    error_sessions = [batch_sessions[idx] for idx in batch_error_indices]
+                    success, errors = self._create_individually(error_objects, i, error_sessions)
+                    success_count += success
+                    error_count += errors - len(batch_error_indices)  # 既にカウント済みなので調整
+            except Exception as e:
+                self.logger.error(
+                    f"  バッチ作成エラー ({i+1}-{min(i+self.batch_size, len(objects))}件): {e}"
+                )
+                # 個別に再試行
+                success, errors = self._create_individually(batch, i, batch_sessions)
+                success_count += success
+                error_count += errors
+
+        return success_count, error_count
+
+    def update_objects(
+        self,
+        objects: List[AnytypeObject],
+        update_list: List[Tuple[ProjectSession, str]],
+    ) -> Tuple[int, int]:
+        """Anytypeのオブジェクトを更新（Syncフェーズ: 更新）
+
+        Args:
+            objects: 更新するオブジェクトのリスト
+            update_list: (セッション, anytype_object_id)のタプルのリスト
+
+        Returns:
+            (成功数, エラー数) のタプル
+        """
+        if len(objects) != len(update_list):
+            raise SyncError(
+                f"objectsとupdate_listの長さが一致しません: "
+                f"objects={len(objects)}, update_list={len(update_list)}"
+            )
+
+        self.logger.info(f"更新: {len(objects)}件のオブジェクトをAnytypeに更新します")
+        success_count = 0
+        error_count = 0
+
+        for obj_idx, (obj, (session, anytype_object_id)) in enumerate(zip(objects, update_list)):
+            try:
+                result = self.object_manager.update_object(anytype_object_id, obj)
+                # エラーチェック
+                if "error" in result:
+                    error_count += 1
+                    self.logger.error(
+                        f"  更新エラー (オブジェクト {obj_idx + 1}, {obj.name}): {result.get('error')}"
+                    )
+                else:
+                    success_count += 1
+                    # 成功したセッションのデータをキャッシュに保存（anytype_object_idを保持し、status='sent'に設定）
+                    self.cache_manager.save_session(session, anytype_object_id)
+                    self.logger.debug(f"  更新成功: {obj_idx + 1} ({obj.name})")
+
+                # 進捗表示
+                if (obj_idx + 1) % self.batch_size == 0 or obj_idx == len(objects) - 1:
+                    self.logger.info(f"  更新進捗: {obj_idx + 1}/{len(objects)} 件")
+            except Exception as e:
+                error_count += 1
+                self.logger.error(f"  更新エラー (オブジェクト {obj_idx + 1}, {obj.name}): {e}")
+
+        return success_count, error_count
+
     def save_objects(
         self,
         objects: List[AnytypeObject],
@@ -201,18 +328,18 @@ class BatchProcessor:
             self.logger.error(error_msg)
             raise SyncError(error_msg)
 
-    def _save_individually(
+    def _create_individually(
         self,
         batch: List[AnytypeObject],
         start_index: int,
-        sessions: Optional[List[ProjectSession]] = None,
+        sessions: List[ProjectSession],
     ) -> Tuple[int, int]:
-        """バッチ内のオブジェクトを個別に保存
+        """バッチ内のオブジェクトを個別に作成
 
         Args:
-            batch: 保存するオブジェクトのリスト
+            batch: 作成するオブジェクトのリスト
             start_index: 開始インデックス(ログ表示用)
-            sessions: 対応するプロジェクトセッションのリスト(キャッシュ削除用、オプション)
+            sessions: 対応するプロジェクトセッションのリスト
 
         Returns:
             (成功数, エラー数) のタプル
@@ -222,15 +349,56 @@ class BatchProcessor:
 
         for obj_idx, obj in enumerate(batch):
             try:
-                self.object_manager.create_object(obj)
+                result = self.object_manager.create_object(obj)
+                # APIレスポンスからobject_idを取得
+                anytype_object_id = result.get("id") or result.get("object_id")
+                if anytype_object_id:
+                    # キャッシュにanytype_object_idを保存
+                    session = sessions[obj_idx]
+                    self.cache_manager.save_session(session, anytype_object_id)
+                    self.logger.debug(
+                        f"anytype_object_idをキャッシュに保存: "
+                        f"session_id={session.id}, object_id={anytype_object_id}"
+                    )
                 success_count += 1
-                self.logger.info(f"  個別追加成功: {start_index + obj_idx + 1} ({obj.name})")
+                self.logger.info(f"  個別作成成功: {start_index + obj_idx + 1} ({obj.name})")
 
-                # 成功したセッションのキャッシュを削除
-                if sessions and obj_idx < len(sessions):
-                    self.cache_manager.delete_sessions([sessions[obj_idx]])
+                # 成功したセッションはanytype_object_idを保存した時点でstatus='sent'になっているため、
+                # キャッシュを削除する必要はない（次回のDiffフェーズで比較に使用するため保持）
             except Exception as e:
                 error_count += 1
-                self.logger.error(f"  個別追加エラー (オブジェクト {start_index + obj_idx + 1}, {obj.name}): {e}")
+                self.logger.error(f"  個別作成エラー (オブジェクト {start_index + obj_idx + 1}, {obj.name}): {e}")
 
         return success_count, error_count
+
+    def _save_individually(
+        self,
+        batch: List[AnytypeObject],
+        start_index: int,
+        sessions: Optional[List[ProjectSession]] = None,
+    ) -> Tuple[int, int]:
+        """バッチ内のオブジェクトを個別に保存（後方互換性のため残す）
+
+        Args:
+            batch: 保存するオブジェクトのリスト
+            start_index: 開始インデックス(ログ表示用)
+            sessions: 対応するプロジェクトセッションのリスト(キャッシュ削除用、オプション)
+
+        Returns:
+            (成功数, エラー数) のタプル
+        """
+        if sessions:
+            return self._create_individually(batch, start_index, sessions)
+        else:
+            # sessionsがない場合は従来の動作
+            success_count = 0
+            error_count = 0
+            for obj_idx, obj in enumerate(batch):
+                try:
+                    self.object_manager.create_object(obj)
+                    success_count += 1
+                    self.logger.info(f"  個別追加成功: {start_index + obj_idx + 1} ({obj.name})")
+                except Exception as e:
+                    error_count += 1
+                    self.logger.error(f"  個別追加エラー (オブジェクト {start_index + obj_idx + 1}, {obj.name}): {e}")
+            return success_count, error_count

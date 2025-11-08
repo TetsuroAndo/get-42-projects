@@ -38,6 +38,7 @@ class SQLiteCache(CacheBase):
                     session_id INTEGER PRIMARY KEY,
                     data TEXT NOT NULL,
                     status TEXT NOT NULL DEFAULT 'pending',
+                    anytype_object_id TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -55,11 +56,12 @@ class SQLiteCache(CacheBase):
         conn.row_factory = sqlite3.Row
         return conn
 
-    def save(self, session: ProjectSession) -> None:
+    def save(self, session: ProjectSession, anytype_object_id: Optional[str] = None) -> None:
         """プロジェクトセッションをキャッシュに保存
 
         Args:
             session: 保存するプロジェクトセッション
+            anytype_object_id: AnytypeオブジェクトID（オプション）
         """
         try:
             data_json = json.dumps(session.to_dict(), ensure_ascii=False)
@@ -68,27 +70,31 @@ class SQLiteCache(CacheBase):
             with self._get_connection() as conn:
                 # 既存のレコードがあるかチェック
                 cursor = conn.execute(
-                    "SELECT session_id FROM cache WHERE session_id = ?",
+                    "SELECT session_id, anytype_object_id FROM cache WHERE session_id = ?",
                     (session.id,)
                 )
-                exists = cursor.fetchone() is not None
+                existing = cursor.fetchone()
 
-                if exists:
-                    # 更新
+                if existing:
+                    # 更新（anytype_object_idが提供されている場合は更新、既存の値がある場合は保持）
+                    update_object_id = anytype_object_id if anytype_object_id else existing["anytype_object_id"]
+                    # anytype_object_idが提供されている場合はstatusを'sent'に設定
+                    status = 'sent' if anytype_object_id else 'pending'
                     conn.execute("""
                         UPDATE cache
-                        SET data = ?, updated_at = ?, status = 'pending'
+                        SET data = ?, updated_at = ?, status = ?, anytype_object_id = ?
                         WHERE session_id = ?
-                    """, (data_json, now, session.id))
+                    """, (data_json, now, status, update_object_id, session.id))
                 else:
-                    # 新規挿入
+                    # 新規挿入（anytype_object_idが提供されている場合はstatusを'sent'に設定）
+                    status = 'sent' if anytype_object_id else 'pending'
                     conn.execute("""
-                        INSERT INTO cache (session_id, data, status, created_at, updated_at)
-                        VALUES (?, ?, 'pending', ?, ?)
-                    """, (session.id, data_json, now, now))
+                        INSERT INTO cache (session_id, data, status, anytype_object_id, created_at, updated_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    """, (session.id, data_json, status, anytype_object_id, now, now))
                 conn.commit()
 
-            self.logger.debug(f"キャッシュに保存: session_id={session.id}")
+            self.logger.debug(f"キャッシュに保存: session_id={session.id}, anytype_object_id={anytype_object_id}")
         except Exception as e:
             self.logger.error(f"キャッシュ保存エラー (session_id={session.id}): {e}", exc_info=True)
             raise
@@ -207,3 +213,26 @@ class SQLiteCache(CacheBase):
         except Exception as e:
             self.logger.error(f"未送信数取得エラー: {e}", exc_info=True)
             return 0
+
+    def get_anytype_object_id(self, session_id: int) -> Optional[str]:
+        """キャッシュからAnytypeオブジェクトIDを取得
+
+        Args:
+            session_id: プロジェクトセッションID
+
+        Returns:
+            AnytypeオブジェクトID（存在しない場合はNone）
+        """
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.execute(
+                    "SELECT anytype_object_id FROM cache WHERE session_id = ?",
+                    (session_id,)
+                )
+                row = cursor.fetchone()
+                if row and row["anytype_object_id"]:
+                    return row["anytype_object_id"]
+                return None
+        except Exception as e:
+            self.logger.error(f"AnytypeオブジェクトID取得エラー (session_id={session_id}): {e}", exc_info=True)
+            return None

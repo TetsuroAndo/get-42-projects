@@ -11,11 +11,24 @@ class CacheBase(ABC):
     """キャッシュの抽象基底クラス"""
 
     @abstractmethod
-    def save(self, session: ProjectSession) -> None:
+    def save(self, session: ProjectSession, anytype_object_id: Optional[str] = None) -> None:
         """プロジェクトセッションをキャッシュに保存
 
         Args:
             session: 保存するプロジェクトセッション
+            anytype_object_id: AnytypeオブジェクトID（オプション）
+        """
+        pass
+
+    @abstractmethod
+    def get_anytype_object_id(self, session_id: int) -> Optional[str]:
+        """キャッシュからAnytypeオブジェクトIDを取得
+
+        Args:
+            session_id: プロジェクトセッションID
+
+        Returns:
+            AnytypeオブジェクトID（存在しない場合はNone）
         """
         pass
 

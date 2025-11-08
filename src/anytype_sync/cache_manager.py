@@ -3,7 +3,7 @@
 Anytype同期処理におけるキャッシュ管理のヘルパークラスです。
 """
 import logging
-from typing import List
+from typing import List, Optional
 from src.payloads import ProjectSession
 from src.cache import CacheBase
 
@@ -14,30 +14,27 @@ class CacheManager:
     セッションのキャッシュ保存・削除処理を共通化します。
     """
 
-    def __init__(self, cache: CacheBase, logger: logging.Logger, restored_session_ids: set[int]):
+    def __init__(self, cache: CacheBase, logger: logging.Logger):
         """キャッシュマネージャーの初期化
 
         Args:
             cache: キャッシュオブジェクト
             logger: ロガー
-            restored_session_ids: 復元済みセッションIDのセット
         """
         self.cache = cache
         self.logger = logger
-        self.restored_session_ids = restored_session_ids
 
-    def save_session(self, session: ProjectSession) -> None:
+    def save_session(self, session: ProjectSession, anytype_object_id: Optional[str] = None) -> None:
         """セッションをキャッシュに保存
 
         Args:
             session: 保存するプロジェクトセッション
+            anytype_object_id: AnytypeオブジェクトID（オプション）
         """
-        # 復元済みセッションはキャッシュに保存しない（重複送信を防ぐ）
-        if session.id not in self.restored_session_ids:
-            try:
-                self.cache.save(session)
-            except Exception as e:
-                self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
+        try:
+            self.cache.save(session, anytype_object_id)
+        except Exception as e:
+            self.logger.warning(f"キャッシュ保存エラー (session_id={session.id}): {e}")
 
     def delete_sessions(self, sessions: List[ProjectSession]) -> None:
         """成功したセッションのキャッシュを削除
@@ -62,3 +59,14 @@ class CacheManager:
             セッション（存在しない場合はNone）
         """
         return self.cache.get(session_id)
+
+    def get_anytype_object_id(self, session_id: int) -> Optional[str]:
+        """キャッシュからAnytypeオブジェクトIDを取得
+
+        Args:
+            session_id: セッションID
+
+        Returns:
+            AnytypeオブジェクトID（存在しない場合はNone）
+        """
+        return self.cache.get_anytype_object_id(session_id)
