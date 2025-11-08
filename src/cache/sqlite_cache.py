@@ -236,3 +236,58 @@ class SQLiteCache(CacheBase):
         except Exception as e:
             self.logger.error(f"AnytypeオブジェクトID取得エラー (session_id={session_id}): {e}", exc_info=True)
             return None
+
+    def get_all(self) -> List[ProjectSession]:
+        """キャッシュ内の全プロジェクトセッションを取得
+
+        Returns:
+            全プロジェクトセッションのリスト
+        """
+        sessions = []
+        try:
+            with self._get_connection() as conn:
+                cursor = conn.execute(
+                    "SELECT data FROM cache ORDER BY created_at ASC"
+                )
+                for row in cursor:
+                    try:
+                        data_dict = json.loads(row["data"])
+                        sessions.append(ProjectSession(**data_dict))
+                    except Exception as e:
+                        self.logger.warning(f"キャッシュデータの復元エラー: {e}")
+                        continue
+
+            self.logger.info(f"全キャッシュ: {len(sessions)}件")
+        except Exception as e:
+            self.logger.error(f"全キャッシュ取得エラー: {e}", exc_info=True)
+
+        return sessions
+
+    def get_stats(self) -> dict:
+        """キャッシュの統計情報を取得
+
+        Returns:
+            統計情報の辞書（total, pending, sent の件数）
+        """
+        try:
+            with self._get_connection() as conn:
+                # 総件数
+                cursor = conn.execute("SELECT COUNT(*) as count FROM cache")
+                total = cursor.fetchone()["count"]
+
+                # pending件数
+                cursor = conn.execute("SELECT COUNT(*) as count FROM cache WHERE status = 'pending'")
+                pending = cursor.fetchone()["count"]
+
+                # sent件数
+                cursor = conn.execute("SELECT COUNT(*) as count FROM cache WHERE status = 'sent'")
+                sent = cursor.fetchone()["count"]
+
+                return {
+                    "total": total,
+                    "pending": pending,
+                    "sent": sent,
+                }
+        except Exception as e:
+            self.logger.error(f"キャッシュ統計情報取得エラー: {e}", exc_info=True)
+            return {"total": 0, "pending": 0, "sent": 0}

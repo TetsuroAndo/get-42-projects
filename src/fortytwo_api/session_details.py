@@ -3,13 +3,40 @@
 42のプロジェクトセッションの詳細情報（スキル、添付ファイル、ルール、チーム統計など）を取得する処理を提供します。
 """
 import logging
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
+from collections import defaultdict
 import requests
 
 from auth42 import Auth42
 from src.http_client import HTTPClient
 from src.exceptions import Project42Error
 from src.payloads import ProjectSession
+
+
+class RequestCounter:
+    """追加リクエストのカウンター"""
+
+    def __init__(self):
+        self.counts: Dict[str, int] = defaultdict(int)
+        self.endpoints: List[str] = []
+
+    def add(self, endpoint: str):
+        """エンドポイントを追加"""
+        self.counts[endpoint] += 1
+        self.endpoints.append(endpoint)
+
+    def get_summary(self) -> Dict[str, Any]:
+        """統計情報を取得"""
+        return {
+            "total_requests": len(self.endpoints),
+            "endpoint_counts": dict(self.counts),
+            "unique_endpoints": list(self.counts.keys()),
+        }
+
+    def reset(self):
+        """カウンターをリセット"""
+        self.counts.clear()
+        self.endpoints.clear()
 
 
 class SessionDetailsFetcher:
@@ -28,6 +55,19 @@ class SessionDetailsFetcher:
         self.auth = auth
         self.http_client = http_client
         self.logger = logger
+        self.request_counter = RequestCounter()
+
+    def get_request_summary(self) -> Dict[str, Any]:
+        """追加リクエストの統計情報を取得
+
+        Returns:
+            統計情報の辞書
+        """
+        return self.request_counter.get_summary()
+
+    def reset_request_counter(self):
+        """リクエストカウンターをリセット"""
+        self.request_counter.reset()
 
     def get_project_session_skills(self, project_session_id: int) -> List[Dict[str, Any]]:
         """プロジェクトセッションのスキル情報を取得
@@ -39,9 +79,11 @@ class SessionDetailsFetcher:
             スキル情報のリスト
         """
         url = f"{self.BASE_URL}/v2/project_sessions/{project_session_id}/project_sessions_skills"
+        endpoint = f"/v2/project_sessions/{project_session_id}/project_sessions_skills"
         headers = self.auth.get_headers()
 
         try:
+            self.request_counter.add(endpoint)
             response = self.http_client.request("GET", url, headers=headers)
             response.raise_for_status()
             return response.json()
@@ -63,9 +105,11 @@ class SessionDetailsFetcher:
             添付ファイル情報のリスト
         """
         url = f"{self.BASE_URL}/v2/project_sessions/{project_session_id}/attachments"
+        endpoint = f"/v2/project_sessions/{project_session_id}/attachments"
         headers = self.auth.get_headers()
 
         try:
+            self.request_counter.add(endpoint)
             response = self.http_client.request("GET", url, headers=headers)
             response.raise_for_status()
             return response.json()
@@ -87,9 +131,11 @@ class SessionDetailsFetcher:
             ルール情報のリスト
         """
         url = f"{self.BASE_URL}/v2/project_sessions/{project_session_id}/project_sessions_rules"
+        endpoint = f"/v2/project_sessions/{project_session_id}/project_sessions_rules"
         headers = self.auth.get_headers()
 
         try:
+            self.request_counter.add(endpoint)
             response = self.http_client.request("GET", url, headers=headers)
             response.raise_for_status()
             rules_data = response.json()
@@ -101,6 +147,8 @@ class SessionDetailsFetcher:
                 if rule_id:
                     try:
                         rule_url = f"{self.BASE_URL}/v2/rules/{rule_id}"
+                        rule_endpoint = f"/v2/rules/{rule_id}"
+                        self.request_counter.add(rule_endpoint)
                         rule_response = self.http_client.request("GET", rule_url, headers=headers)
                         rule_response.raise_for_status()
                         rule_detail = rule_response.json()
@@ -156,6 +204,8 @@ class SessionDetailsFetcher:
                     "page": page,
                     "per_page": per_page,
                 }
+                endpoint = f"/v2/project_sessions/{project_session_id}/teams?page={page}"
+                self.request_counter.add(endpoint)
                 response = self.http_client.request("GET", url, headers=headers, params=params)
                 response.raise_for_status()
                 teams_data = response.json()
@@ -270,7 +320,9 @@ class SessionDetailsFetcher:
         # 評価(evaluations)エンドポイントから取得を試みる
         try:
             evaluations_url = f"{self.BASE_URL}/v2/project_sessions/{session.id}/evaluations"
+            evaluations_endpoint = f"/v2/project_sessions/{session.id}/evaluations"
             headers = self.auth.get_headers()
+            self.request_counter.add(evaluations_endpoint)
             response = self.http_client.request("GET", evaluations_url, headers=headers)
             if response.ok:
                 evaluations = response.json()
@@ -281,6 +333,8 @@ class SessionDetailsFetcher:
                         if scale_id:
                             try:
                                 scale_url = f"{self.BASE_URL}/v2/scales/{scale_id}"
+                                scale_endpoint = f"/v2/scales/{scale_id}"
+                                self.request_counter.add(scale_endpoint)
                                 scale_response = self.http_client.request("GET", scale_url, headers=headers)
                                 if scale_response.ok:
                                     scale_data = scale_response.json()
