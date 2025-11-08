@@ -48,7 +48,32 @@ class SQLiteCache(CacheBase):
                 CREATE INDEX IF NOT EXISTS idx_status
                 ON cache(status)
             """)
+            # 既存のテーブルにanytype_object_idカラムが存在しない場合は追加（マイグレーション）
+            self._migrate_database(conn)
             conn.commit()
+
+    def _migrate_database(self, conn: sqlite3.Connection) -> None:
+        """データベースのマイグレーション処理
+
+        Args:
+            conn: SQLite接続オブジェクト
+        """
+        try:
+            # テーブルのカラム情報を取得
+            cursor = conn.execute("PRAGMA table_info(cache)")
+            columns = [row[1] for row in cursor.fetchall()]
+
+            # anytype_object_idカラムが存在しない場合は追加
+            if "anytype_object_id" not in columns:
+                self.logger.info("データベースマイグレーション: anytype_object_idカラムを追加します")
+                conn.execute("""
+                    ALTER TABLE cache
+                    ADD COLUMN anytype_object_id TEXT
+                """)
+                self.logger.info("データベースマイグレーションが完了しました")
+        except sqlite3.Error as e:
+            self.logger.error(f"データベースマイグレーションエラー: {e}", exc_info=True)
+            # マイグレーションエラーは致命的ではないため、続行
 
     def _get_connection(self) -> sqlite3.Connection:
         """データベース接続を取得"""
