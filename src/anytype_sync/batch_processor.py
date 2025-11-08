@@ -367,7 +367,16 @@ class BatchProcessor:
                 # キャッシュを削除する必要はない（次回のDiffフェーズで比較に使用するため保持）
             except Exception as e:
                 error_count += 1
-                self.logger.error(f"  個別作成エラー (オブジェクト {start_index + obj_idx + 1}, {obj.name}): {e}")
+                # エラーの詳細をログに出力
+                error_msg = f"  個別作成エラー (オブジェクト {start_index + obj_idx + 1}, {obj.name}): {e}"
+                # HTTPエラーの場合はレスポンスの詳細も含める
+                if hasattr(e, 'response') and e.response is not None:
+                    try:
+                        error_body = e.response.json()
+                        error_msg += f"\n    エラー詳細: {error_body}"
+                    except Exception:
+                        error_msg += f"\n    エラーレスポンス: {e.response.text[:500]}"
+                self.logger.error(error_msg, exc_info=True)
 
         return success_count, error_count
 
