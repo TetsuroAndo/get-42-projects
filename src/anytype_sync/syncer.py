@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from src.config import Config, get_default_cache_path
 from src.payloads import ProjectSession
-from src.exceptions import SyncError
+from src.exceptions import SyncError, Project42Error
 from src.converters import project_session_to_object
 from src.cache import SQLiteCache, CacheBase
 from anytype import AnytypeClient, ObjectManager, AnytypeObject

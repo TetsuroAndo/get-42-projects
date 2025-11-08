@@ -3,7 +3,7 @@
 42のプロジェクトセッションの詳細情報（スキル、添付ファイル、ルール、チーム統計など）を取得する処理を提供します。
 """
 import logging
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple
 from collections import defaultdict
 import requests
 
